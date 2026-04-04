@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Family Lists</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f; --surface: #13131a; --surface2: #1c1c27; --border: #2a2a3a;
+    --accent: #5b9cf6; --accent-soft: rgba(91,156,246,0.12);
+    --text: #e8e8f0; --text-muted: #666680; --checked-text: #9090a8;
+    --red: #f06; --green: #2ecc71; --orange: #f0a030; --orange-soft: rgba(240,160,48,0.12);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; min-height: 100vh; padding-bottom: 20px; }
+
+  /* SYNC STATUS */
+  .sync-bar {
+    background: var(--surface2); border-bottom: 1px solid var(--border);
+    padding: 6px 16px; display: flex; align-items: center; justify-content: space-between;
+    font-size: 11px; color: var(--text-muted); min-height: 30px;
+  }
+  .sync-dot { width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; flex-shrink: 0; display: inline-block; }
+  .sync-dot.green { background: var(--green); }
+  .sync-dot.orange { background: var(--orange); animation: pulse 1.2s infinite; }
+  .sync-dot.red { background: var(--red); }
+  .sync-dot.grey { background: #555; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .sync-left { display: flex; align-items: center; }
+  .signin-btn {
+    background: var(--accent); color: #fff; border: none; padding: 4px 10px;
+    border-radius: 6px; font-family: 'DM Sans', sans-serif; font-size: 11px;
+    cursor: pointer; font-weight: 500;
+  }
+
+  /* MODE BAR */
+  .mode-bar { background: var(--surface); border-bottom: 1px solid var(--border); display: flex; padding: 0 20px; }
+  .mode-tab { flex: 1; padding: 12px 0; text-align: center; font-size: 13px; font-weight: 500; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; }
+  .mode-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* HEADER */
+  .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 16px 20px 14px; position: sticky; top: 0; z-index: 100; }
+  .header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  h1 { font-family: 'DM Serif Display', serif; font-size: 26px; color: var(--accent); letter-spacing: -0.5px; }
+  .trip-selector { display: flex; align-items: center; gap: 8px; }
+  select { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 7px 12px; border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 13px; cursor: pointer; max-width: 160px; }
+  .btn { background: var(--surface2); border: 1px solid var(--border); color: var(--text-muted); padding: 7px 12px; border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 13px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn.danger:hover { border-color: var(--red); color: var(--red); }
+
+  /* PROGRESS */
+  .progress-bar { height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), #7ec8e3); border-radius: 2px; transition: width 0.4s ease; }
+  .progress-label { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; display: flex; justify-content: space-between; }
+
+  /* SHOPPING HEADER */
+  .needed-count { font-size: 22px; font-family: 'DM Serif Display', serif; color: var(--orange); line-height: 1; }
+  .needed-count.zero { color: var(--green); }
+  .needed-label { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+
+  /* SEARCH */
+  .search-wrap { position: relative; margin-top: 10px; }
+  .search-input { width: 100%; background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 9px 14px 9px 36px; border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 14px; outline: none; transition: border-color 0.15s; }
+  .search-input:focus { border-color: var(--accent); }
+  .search-input::placeholder { color: var(--text-muted); }
+  .search-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 15px; pointer-events: none; }
+  .search-clear { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 16px; padding: 2px 5px; display: none; }
+  .search-clear.visible { display: block; }
+
+  /* CONTROLS */
+  .controls { display: flex; gap: 8px; flex-wrap: wrap; padding: 10px 20px; border-bottom: 1px solid var(--border); background: var(--surface); }
+  .filter-btn { background: transparent; border: 1px solid var(--border); color: var(--text-muted); padding: 5px 12px; border-radius: 20px; font-family: 'DM Sans', sans-serif; font-size: 12px; cursor: pointer; transition: all 0.15s; }
+  .filter-btn.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  .filter-btn.orange-active { background: var(--orange-soft); border-color: var(--orange); color: var(--orange); }
+
+  /* SECTIONS & ITEMS */
+  .section { margin: 0; }
+  .section-header { padding: 14px 20px 6px; font-size: 10px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-muted); display: flex; align-items: center; justify-content: space-between; }
+  .section-count { font-size: 11px; background: var(--surface2); padding: 2px 7px; border-radius: 10px; letter-spacing: 0; font-weight: 500; text-transform: none; }
+  .fav-star { color: var(--orange); margin-right: 5px; font-size: 11px; }
+  .item { display: flex; align-items: center; gap: 14px; padding: 13px 20px; border-bottom: 1px solid rgba(255,255,255,0.03); transition: background 0.15s; cursor: pointer; user-select: none; }
+  .item:hover { background: var(--surface2); }
+  .checkbox { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+  .item.checked .checkbox { background: var(--accent); border-color: var(--accent); }
+  .checkbox svg { display: none; }
+  .item.checked .checkbox svg { display: block; }
+  .shop-check { width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.2s; border: 2px solid var(--border); }
+  .item.instock .shop-check { background: var(--surface2); border-color: #2a2a3a; }
+  .item.instock .shop-check svg { display: none; }
+  .item.needed .shop-check { background: var(--orange); border-color: var(--orange); }
+  .item.needed .shop-check svg { display: block; }
+  .item.needed .item-text { color: var(--text); font-weight: 500; }
+  .item.instock .item-text { color: var(--text-muted); }
+  .item-text { font-size: 16px; font-weight: 400; flex: 1; line-height: 1.3; transition: all 0.2s; }
+  .item.checked .item-text { color: var(--checked-text); }
+  body.filter-all .item.checked .item-text { text-decoration: line-through; text-decoration-color: #44445a; text-decoration-thickness: 1px; }
+  .item-delete { opacity: 0; background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; border-radius: 4px; font-size: 16px; line-height: 1; transition: all 0.15s; flex-shrink: 0; }
+  .item:hover .item-delete { opacity: 1; }
+  .item-delete:hover { color: var(--red); }
+  .item-qty { font-size: 12px; font-weight: 600; color: var(--accent); background: var(--accent-soft); border: 1px solid rgba(91,156,246,0.25); border-radius: 20px; padding: 2px 9px; flex-shrink: 0; }
+  .item.checked .item-qty { opacity: 0.3; }
+  .fav-badge { font-size: 13px; flex-shrink: 0; opacity: 0.7; }
+  .item.na { opacity: 0.35; }
+  .item.na .item-text { text-decoration: line-through; text-decoration-style: dashed; text-decoration-color: #555; color: var(--text-muted); }
+  .na-badge { font-size: 10px; font-weight: 700; color: #555; background: #1e1e1e; border: 1px solid #333; border-radius: 4px; padding: 2px 6px; flex-shrink: 0; }
+  .needed-pill { font-size: 10px; font-weight: 700; background: var(--orange); color: #000; border-radius: 10px; padding: 2px 7px; flex-shrink: 0; }
+
+  /* ADD AREA */
+  .add-area { position: sticky; bottom: 0; background: var(--surface); border-top: 1px solid var(--border); padding: 10px 16px 14px; display: flex; gap: 8px; flex-direction: column; z-index: 50; }
+  .add-row { display: flex; gap: 8px; }
+  .add-input { flex: 1; min-width: 0; background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 10px 14px; border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 15px; outline: none; transition: border-color 0.15s; }
+  .add-input::placeholder { color: var(--text-muted); }
+  .add-input:focus { border-color: var(--accent); }
+  .cat-select { flex: 1; min-width: 0; background: var(--surface2); border: 1px solid var(--border); color: var(--text-muted); padding: 10px; border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 13px; cursor: pointer; }
+  .fav-toggle-btn { background: none; border: 1px solid var(--border); color: var(--text-muted); padding: 10px 12px; border-radius: 10px; cursor: pointer; font-size: 16px; transition: all 0.15s; flex-shrink: 0; }
+  .fav-toggle-btn.on { border-color: var(--orange); color: var(--orange); background: var(--orange-soft); }
+
+  /* MODALS */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 24px; width: 100%; max-width: 340px; }
+  .modal h2 { font-family: 'DM Serif Display', serif; font-size: 20px; margin-bottom: 16px; color: var(--text); }
+  .modal input, .modal select { width: 100%; background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 10px 14px; border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 15px; outline: none; margin-bottom: 12px; cursor: pointer; }
+  .modal input:focus { border-color: var(--accent); }
+  .modal-btns { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+  .hidden { display: none !important; }
+  .empty { text-align: center; color: var(--text-muted); padding: 60px 20px; font-size: 14px; }
+</style>
+</head>
+<body>
+
+<!-- SYNC STATUS BAR -->
+<div class="sync-bar" id="syncBar">
+  <div class="sync-left">
+    <span class="sync-dot grey" id="syncDot"></span>
+    <span id="syncMsg">Not signed in</span>
+  </div>
+  <button class="signin-btn" id="signinBtn" onclick="handleSignIn()">Sign in with Google</button>
+</div>
+
+<!-- MODE TABS -->
+<div class="mode-bar">
+  <div class="mode-tab active" id="tabPacking" onclick="switchMode('packing')">✈ Holiday Packing</div>
+  <div class="mode-tab" id="tabShopping" onclick="switchMode('shopping')">🛒 Shopping</div>
+</div>
+
+<!-- ===== PACKING MODE ===== -->
+<div id="packingMode">
+  <div class="header">
+    <div class="header-top">
+      <h1>✈ Holiday Packing</h1>
+      <div class="trip-selector">
+        <select id="tripSelect" onchange="loadTrip()"></select>
+        <button class="btn" onclick="showNewTripModal()">+ Trip</button>
+      </div>
+    </div>
+    <div class="progress-label">
+      <span id="progressLabel">0 of 0 packed</span>
+      <span id="progressPct">0%</span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+  </div>
+  <div class="controls">
+    <button class="filter-btn active" onclick="setFilter('all',this)">All</button>
+    <button class="filter-btn" onclick="setFilter('todo',this)">To pack</button>
+    <button class="filter-btn" onclick="setFilter('done',this)">Packed ✓</button>
+    <button class="btn" style="margin-left:auto" onclick="resetChecks()">Reset for trip</button>
+    <button class="btn danger" onclick="deleteTrip()">Delete trip</button>
+  </div>
+  <div id="packingList"></div>
+  <div class="add-area">
+    <div class="add-row">
+      <input class="add-input" id="newItemText" placeholder="Add item…" onkeydown="if(event.key==='Enter')addItem()">
+      <input class="add-input" id="newItemQty" type="number" placeholder="Qty" min="1" style="width:64px;flex:none;">
+    </div>
+    <div class="add-row">
+      <select class="cat-select" id="newItemCat"></select>
+      <button class="btn" onclick="promptNewCategory('add')" style="padding:10px 9px;flex-shrink:0;" title="New category">＋</button>
+      <button class="btn primary" onclick="addItem()">Add</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SHOPPING MODE ===== -->
+<div id="shoppingMode" class="hidden">
+  <div class="header">
+    <div class="header-top">
+      <h1>🛒 Shopping</h1>
+      <div>
+        <span id="shopNeededCount" class="needed-count zero">0</span><br>
+        <span class="needed-label" id="shopNeededLabel">items needed</span>
+      </div>
+    </div>
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input class="search-input" id="shopSearch" placeholder="Search items…" oninput="onShopSearch()">
+      <button class="search-clear" id="shopSearchClear" onclick="clearShopSearch()">×</button>
+    </div>
+  </div>
+  <div class="controls" id="shopControls">
+    <button class="filter-btn active" onclick="setShopFilter('all',this)">All items</button>
+    <button class="filter-btn" onclick="setShopFilter('needed',this)">Needed 🛒</button>
+  </div>
+  <div id="shopList"></div>
+  <div class="add-area">
+    <div class="add-row">
+      <input class="add-input" id="shopNewText" placeholder="Add item…" onkeydown="if(event.key==='Enter')addShopItem()">
+    </div>
+    <div class="add-row">
+      <select class="cat-select" id="shopNewCat"></select>
+      <button class="fav-toggle-btn" id="shopFavBtn" onclick="toggleAddFav()" title="Add to favourites">⭐</button>
+      <button class="btn primary" onclick="addShopItem()">Add</button>
+    </div>
+  </div>
+</div>
+
+<!-- PACKING MODALS -->
+<div class="modal-overlay hidden" id="editModal">
+  <div class="modal">
+    <h2>Edit item</h2>
+    <input type="text" id="editItemText" placeholder="Item description">
+    <select id="editItemCat"></select>
+    <input type="number" id="editItemQty" placeholder="Quantity (optional)" min="0">
+    <div class="modal-btns">
+      <button class="btn" id="naToggleBtn" onclick="toggleNAFromModal()">Skip (N/A)</button>
+      <button class="btn" id="deleteBtn" onclick="toggleDeleteArmed()">Delete</button>
+      <button class="btn" onclick="closeModal('editModal')">Cancel</button>
+      <button class="btn primary" onclick="saveEdit()">Save</button>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay hidden" id="newCatModal">
+  <div class="modal">
+    <h2>New category</h2>
+    <input type="text" id="newCatName" placeholder="e.g. Gym Stuff" onkeydown="if(event.key==='Enter')confirmNewCategory()">
+    <div class="modal-btns">
+      <button class="btn" onclick="closeModal('newCatModal')">Cancel</button>
+      <button class="btn primary" onclick="confirmNewCategory()">Create</button>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay hidden" id="newTripModal">
+  <div class="modal">
+    <h2>New trip</h2>
+    <input type="text" id="newTripName" placeholder="e.g. France 2026" onkeydown="if(event.key==='Enter')createTrip()">
+    <div class="modal-btns">
+      <button class="btn" onclick="closeModal('newTripModal')">Cancel</button>
+      <button class="btn primary" onclick="createTrip()">Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- SHOPPING EDIT MODAL -->
+<div class="modal-overlay hidden" id="shopEditModal">
+  <div class="modal">
+    <h2>Edit item</h2>
+    <input type="text" id="shopEditText" placeholder="Item name">
+    <select id="shopEditCat"></select>
+    <div class="modal-btns">
+      <button class="btn" id="shopFavToggleBtn" onclick="toggleShopFavFromModal()">⭐ Make favourite</button>
+      <button class="btn" id="shopDeleteBtn" onclick="toggleShopDeleteArmed()">Delete</button>
+      <button class="btn" onclick="closeModal('shopEditModal')">Cancel</button>
+      <button class="btn primary" onclick="saveShopEdit()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Google Identity Services -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+
+<script>
+// ============================================================
+// CONFIG — fill these in after Google Cloud setup
+// ============================================================
+const GOOGLE_CLIENT_ID = 'YOUR_CLIENT_ID_HERE';
+const DRIVE_FILE_NAME  = 'family-lists-data.json';
+const SCOPES           = 'https://www.googleapis.com/auth/drive.appdata';
+
+// ============================================================
+// GOOGLE DRIVE SYNC
+// ============================================================
+let accessToken = null;
+let driveFileId = null;
+let saveTimer   = null;
+let isSaving    = false;
+
+function setSyncStatus(status, msg) {
+  const dot = document.getElementById('syncDot');
+  const msgEl = document.getElementById('syncMsg');
+  const btn = document.getElementById('signinBtn');
+  dot.className = 'sync-dot ' + status;
+  msgEl.textContent = msg;
+  btn.style.display = (status === 'grey') ? 'inline-block' : 'none';
+}
+
+function handleSignIn() {
+  const client = google.accounts.oauth2.initTokenClient({
+    client_id: GOOGLE_CLIENT_ID,
+    scope: SCOPES,
+    callback: async (resp) => {
+      if (resp.error) { setSyncStatus('red', 'Sign-in failed'); return; }
+      accessToken = resp.access_token;
+      setSyncStatus('orange', 'Loading data…');
+      await loadFromDrive();
+    }
+  });
+  client.requestAccessToken();
+}
+
+async function loadFromDrive() {
+  try {
+    // Search for existing file in appDataFolder
+    const searchRes = await fetch(
+      `https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name='${DRIVE_FILE_NAME}'&fields=files(id,name)`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    const searchData = await searchRes.json();
+
+    if (searchData.files && searchData.files.length > 0) {
+      driveFileId = searchData.files[0].id;
+      const fileRes = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media`,
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+      const data = await fileRes.json();
+      state = data;
+      // ensure shopping exists
+      if (!state.shopping) state.shopping = { items: buildDefaultShopItems() };
+      if (!state.trips) { state.trips = { 'My Packing List': { items: DEFAULT_PACKING_ITEMS.map((it,i)=>({id:i,text:it.text,cat:it.cat,checked:false})) } }; state.currentTrip='My Packing List'; }
+      setSyncStatus('green', 'Synced with Drive');
+    } else {
+      // First time — upload defaults
+      setSyncStatus('orange', 'First run — saving defaults…');
+      await saveToDrive();
+      setSyncStatus('green', 'Synced with Drive');
+    }
+    if (!state.currentTrip || !state.trips[state.currentTrip]) state.currentTrip = Object.keys(state.trips)[0] || null;
+    render();
+    renderShop();
+  } catch(e) {
+    setSyncStatus('red', 'Drive error — changes unsaved');
+    console.error(e);
+  }
+}
+
+async function saveToDrive() {
+  if (!accessToken) return;
+  isSaving = true;
+  setSyncStatus('orange', 'Saving…');
+  const body = JSON.stringify(state);
+  try {
+    if (driveFileId) {
+      // Update existing
+      await fetch(`https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=media`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        body
+      });
+    } else {
+      // Create new in appDataFolder
+      const meta = { name: DRIVE_FILE_NAME, parents: ['appDataFolder'] };
+      const form = new FormData();
+      form.append('metadata', new Blob([JSON.stringify(meta)], { type: 'application/json' }));
+      form.append('file', new Blob([body], { type: 'application/json' }));
+      const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}` },
+        body: form
+      });
+      const data = await res.json();
+      driveFileId = data.id;
+    }
+    setSyncStatus('green', 'Saved · ' + new Date().toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'}));
+  } catch(e) {
+    setSyncStatus('red', 'Save failed — check connection');
+    console.error(e);
+  }
+  isSaving = false;
+}
+
+// Debounced save — waits 1.5s after last change before writing to Drive
+function save() {
+  clearTimeout(saveTimer);
+  setSyncStatus('orange', 'Unsaved changes…');
+  saveTimer = setTimeout(saveToDrive, 1500);
+}
+
+// ============================================================
+// DATA DEFAULTS
+// ============================================================
+let PACK_CATEGORIES = ['Documents & Money','Electronics','Clothing','Toiletries & Health','Kids','Sport & Fitness','Food & Drink','Car & Travel','Shoes & Trainers','Gym Stuff','Swimming & Pool','Misc'];
+const SHOP_CATEGORIES = ['Favourites','Bakery & Breakfast','Condiments & Sauces','Tinned & Dry Goods','Dairy & Chilled','Frozen','Snacks & Treats','Drinks','Cleaning & Household','Health & Personal'];
+
+const DEFAULT_PACKING_ITEMS = [
+  {text:'Passports',cat:'Documents & Money'},{text:'Bank Cards',cat:'Documents & Money'},
+  {text:'Driving license',cat:'Documents & Money'},{text:'Jemma driving license',cat:'Documents & Money'},
+  {text:'Proof of car insurance',cat:'Documents & Money'},{text:'Vehicle registration documents',cat:'Documents & Money'},
+  {text:'UK sticker for car',cat:'Car & Travel'},{text:'Driving kit (red pouch)',cat:'Car & Travel'},
+  {text:'£1 coin for the airport trolley',cat:'Car & Travel'},{text:'Gas reading',cat:'Misc'},
+  {text:'Phone chargers',cat:'Electronics'},{text:'Plug extension',cat:'Electronics'},
+  {text:'iPad – Gracie',cat:'Electronics'},{text:'iPad – Monte',cat:'Electronics'},
+  {text:'Kindle',cat:'Electronics'},{text:'Gracie Garmin watch',cat:'Electronics'},
+  {text:'iPhone swimming case – 1',cat:'Swimming & Pool'},{text:"Camera – Monte's Bedroom",cat:'Electronics'},
+  {text:'YouTube Kids subscription – download shows',cat:'Electronics'},
+  {text:'Casual T shirts – 4',cat:'Clothing'},{text:'Casual shorts – 3',cat:'Clothing'},
+  {text:'Casual trousers – 1',cat:'Clothing'},{text:'Jeans',cat:'Clothing'},
+  {text:'Evening short sleeve shirt – 4',cat:'Clothing'},{text:'Smart Shorts – 3',cat:'Clothing'},
+  {text:'Smart shoes – 1',cat:'Shoes & Trainers'},{text:'Swimming shorts – 2',cat:'Swimming & Pool'},
+  {text:'Long sleeve swimming shirts – 3',cat:'Swimming & Pool'},{text:'Gym Kit – 1',cat:'Clothing'},
+  {text:'Hoodie – 2',cat:'Clothing'},{text:'PJs – 1',cat:'Clothing'},
+  {text:'Socks – 5',cat:'Clothing'},{text:'Short socks – 4',cat:'Clothing'},
+  {text:'Pool socks',cat:'Swimming & Pool'},{text:'Boxer shorts – 5',cat:'Clothing'},
+  {text:'Hats – 2',cat:'Clothing'},{text:'Monte cap – 1',cat:'Clothing'},
+  {text:'Crocs',cat:'Shoes & Trainers'},{text:'Gym trainers',cat:'Shoes & Trainers'},
+  {text:'Hankies – 2',cat:'Clothing'},{text:'Winter holiday',cat:'Clothing'},
+  {text:'Wash bag',cat:'Toiletries & Health'},{text:'Ointment',cat:'Toiletries & Health'},
+  {text:'Moisturiser',cat:'Toiletries & Health'},{text:'Children medicines',cat:'Toiletries & Health'},
+  {text:'Tablets',cat:'Toiletries & Health'},{text:'Foam Roller',cat:'Gym Stuff'},
+  {text:'Massage gun',cat:'Gym Stuff'},{text:'Electrolytes',cat:'Gym Stuff'},
+  {text:'Mini fan',cat:'Gym Stuff'},{text:'Water bottle – Jemma',cat:'Food & Drink'},
+  {text:'Water bottle – Gracie',cat:'Food & Drink'},{text:'Water Bottle – Monte',cat:'Food & Drink'},
+  {text:'Water bottle – James',cat:'Food & Drink'},{text:'Running water bottle – 1',cat:'Food & Drink'},
+  {text:'Coffee Travel flask',cat:'Food & Drink'},{text:'Mug – Jemma',cat:'Food & Drink'},
+  {text:'Mug – James',cat:'Food & Drink'},{text:'Goat',cat:'Kids'},
+];
+
+function buildDefaultShopItems() {
+  let id = 1000;
+  return [
+    {text:'Tea bags - large',cat:'Bakery & Breakfast',fav:true},
+    {text:'Branston Pickle',cat:'Condiments & Sauces'},{text:'Tomato Ketchup',cat:'Condiments & Sauces',fav:true},
+    {text:'Tin foil',cat:'Cleaning & Household'},{text:'Fish Fingers',cat:'Frozen'},
+    {text:'Glaze',cat:'Condiments & Sauces'},{text:'Sugar',cat:'Bakery & Breakfast'},
+    {text:'Weetabix',cat:'Bakery & Breakfast'},{text:'Toilet paper',cat:'Cleaning & Household'},
+    {text:'Nice Soy sauce',cat:'Condiments & Sauces'},{text:'Raisins',cat:'Snacks & Treats'},
+    {text:'Pack of Budweiser',cat:'Drinks'},{text:'Jar of Instant Coffee',cat:'Drinks'},
+    {text:'Brown sauce',cat:'Condiments & Sauces'},{text:'Chips',cat:'Frozen'},
+    {text:'Lea & Perrins Worcestershire sauce',cat:'Condiments & Sauces'},
+    {text:'Parsley',cat:'Condiments & Sauces',fav:true},{text:'Lindor chocolates',cat:'Snacks & Treats'},
+    {text:'Garlic',cat:'Condiments & Sauces'},{text:'Mustard',cat:'Condiments & Sauces'},
+    {text:'Mixed herbs',cat:'Condiments & Sauces'},{text:'Tinned hot dogs for CoCo',cat:'Tinned & Dry Goods'},
+    {text:'Monte bath soap',cat:'Health & Personal'},{text:'Granola',cat:'Bakery & Breakfast'},
+    {text:'Miele bin bags',cat:'Cleaning & Household'},{text:'Tins of spaghetti',cat:'Tinned & Dry Goods'},
+    {text:'Salt - large',cat:'Condiments & Sauces'},{text:"Monte's Milk",cat:'Dairy & Chilled'},
+    {text:'White bin bags - running gear washing!',cat:'Cleaning & Household'},
+    {text:'Eggs',cat:'Dairy & Chilled',fav:true},{text:'Paper towels',cat:'Cleaning & Household'},
+    {text:'Small tins of Beans for Monte',cat:'Tinned & Dry Goods'},{text:'Popcorn',cat:'Snacks & Treats'},
+    {text:'Actimel',cat:'Dairy & Chilled'},{text:'Pretzels',cat:'Snacks & Treats'},
+    {text:'Ice',cat:'Frozen'},{text:'Olive Oil - large',cat:'Condiments & Sauces'},
+    {text:'Yogurts',cat:'Dairy & Chilled'},{text:'Tins of beans',cat:'Tinned & Dry Goods'},
+    {text:'Bran flakes',cat:'Bakery & Breakfast'},{text:'Long spaghetti',cat:'Tinned & Dry Goods'},
+    {text:'Plastic gloves',cat:'Cleaning & Household'},{text:'Fairy liquid',cat:'Cleaning & Household',fav:true},
+    {text:'Dishwasher tablets',cat:'Cleaning & Household',fav:true},
+    {text:'Shreddies',cat:'Bakery & Breakfast'},{text:'Rice Krispies',cat:'Bakery & Breakfast'},
+    {text:'Cheerios',cat:'Bakery & Breakfast'},{text:'White wine vinegar',cat:'Condiments & Sauces'},
+    {text:'Black sacks',cat:'Cleaning & Household'},{text:'Maple syrup',cat:'Condiments & Sauces'},
+    {text:'Vinegar',cat:'Condiments & Sauces'},{text:'Salt',cat:'Condiments & Sauces'},
+    {text:'Lloyd Grossman sauce',cat:'Condiments & Sauces'},{text:'Lurpak',cat:'Dairy & Chilled'},
+    {text:'Budweisers',cat:'Drinks'},
+  ].map(it => ({...it, id: id++, fav: !!it.fav, needed: false}));
+}
+
+let state = {
+  trips: { 'My Packing List': { items: DEFAULT_PACKING_ITEMS.map((it,i)=>({id:i,text:it.text,cat:it.cat,checked:false})) } },
+  currentTrip: 'My Packing List',
+  shopping: { items: buildDefaultShopItems() }
+};
+
+// ============================================================
+// MODE SWITCH
+// ============================================================
+let currentMode = 'packing';
+function switchMode(mode) {
+  currentMode = mode;
+  document.getElementById('packingMode').classList.toggle('hidden', mode !== 'packing');
+  document.getElementById('shoppingMode').classList.toggle('hidden', mode !== 'shopping');
+  document.getElementById('tabPacking').classList.toggle('active', mode === 'packing');
+  document.getElementById('tabShopping').classList.toggle('active', mode === 'shopping');
+  if (mode==='shopping') renderShop(); else render();
+}
+
+// ============================================================
+// PACKING
+// ============================================================
+let packFilter = 'all';
+
+function populateTripSelect() {
+  const sel = document.getElementById('tripSelect');
+  sel.innerHTML = '';
+  Object.keys(state.trips).forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name; opt.text = name;
+    if (name === state.currentTrip) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+function populateCatSelect() {
+  const sel = document.getElementById('newItemCat');
+  const cur = sel.value;
+  sel.innerHTML = PACK_CATEGORIES.map(c=>`<option value="${c}">${c}</option>`).join('');
+  if (PACK_CATEGORIES.includes(cur)) sel.value = cur;
+}
+let newCatTarget = null;
+function promptNewCategory(target) {
+  newCatTarget = target;
+  document.getElementById('newCatName').value = '';
+  document.getElementById('newCatModal').classList.remove('hidden');
+  setTimeout(()=>document.getElementById('newCatName').focus(),50);
+}
+function confirmNewCategory() {
+  const t = document.getElementById('newCatName').value.trim();
+  if (!t || PACK_CATEGORIES.includes(t)) return;
+  PACK_CATEGORIES.splice(PACK_CATEGORIES.length-1,0,t);
+  if (!state.customCategories) state.customCategories=[];
+  state.customCategories.push(t);
+  save(); closeModal('newCatModal'); populateCatSelect();
+  if (newCatTarget==='edit') populateEditCatSelect(t);
+  else document.getElementById('newItemCat').value=t;
+}
+function populateEditCatSelect(v) {
+  const s = document.getElementById('editItemCat');
+  if (!s) return;
+  s.innerHTML = PACK_CATEGORIES.map(c=>`<option value="${c}" ${c===v?'selected':''}>${c}</option>`).join('') + '<option value="__add__">+ New category…</option>';
+  s.onchange = ()=>{ if(s.value==='__add__'){s.value=v;promptNewCategory('edit');} };
+}
+function loadTrip() { state.currentTrip=document.getElementById('tripSelect').value; save(); render(); }
+function currentItems() { return state.trips[state.currentTrip]?.items||[]; }
+function setFilter(f,el) {
+  packFilter=f;
+  document.querySelectorAll('#packingMode .filter-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  document.body.className='filter-'+f;
+  render();
+}
+function render() {
+  populateTripSelect(); populateCatSelect();
+  const items=currentItems();
+  const active=items.filter(i=>!i.na);
+  const total=active.length, done=active.filter(i=>i.checked).length;
+  const pct=total?Math.round(done/total*100):0;
+  document.getElementById('progressLabel').textContent=`${done} of ${total} packed`;
+  document.getElementById('progressPct').textContent=`${pct}%`;
+  document.getElementById('progressFill').style.width=pct+'%';
+  const container=document.getElementById('packingList');
+  container.innerHTML='';
+  const grouped={};
+  PACK_CATEGORIES.forEach(c=>{grouped[c]=[];});
+  items.forEach(item=>{ const cat=item.cat||'Misc'; if(!grouped[cat])grouped[cat]=[]; grouped[cat].push(item); });
+  let anyVisible=false;
+  PACK_CATEGORIES.forEach(cat=>{
+    const catItems=grouped[cat];
+    if(!catItems||catItems.length===0) return;
+    const filtered=catItems.filter(item=>{
+      if(packFilter==='todo') return !item.checked&&!item.na;
+      if(packFilter==='done') return item.checked&&!item.na;
+      return true;
+    });
+    if(filtered.length===0) return;
+    anyVisible=true;
+    const section=document.createElement('div');
+    section.className='section';
+    const checkedInCat=catItems.filter(i=>i.checked).length;
+    section.innerHTML=`<div class="section-header"><span>${cat}</span><span class="section-count">${checkedInCat}/${catItems.length}</span></div>`;
+    filtered.forEach(item=>{
+      const div=document.createElement('div');
+      div.className='item'+(item.checked?' checked':'')+(item.na?' na':'');
+      div.innerHTML=`
+        <div class="checkbox"><svg width="12" height="9" viewBox="0 0 12 9" fill="none"><path d="M1 4L4.5 7.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <span class="item-text">${item.text}</span>
+        ${item.qty?`<span class="item-qty">${item.qty}</span>`:''}
+        ${item.na?'<span class="na-badge">N/A</span>':''}
+        <button class="item-delete" onclick="deletePackItem(${item.id},event)">×</button>`;
+      let pt=null,dl=false;
+      div.addEventListener('pointerdown',()=>{dl=false;pt=setTimeout(()=>{dl=true;openEditModal(item.id);},500);});
+      div.addEventListener('pointerup',()=>clearTimeout(pt));
+      div.addEventListener('pointercancel',()=>clearTimeout(pt));
+      div.addEventListener('click',e=>{if(dl){e.stopPropagation();return;}togglePackItem(item.id);});
+      section.appendChild(div);
+    });
+    container.appendChild(section);
+  });
+  if(!anyVisible) container.innerHTML='<div class="empty">Nothing here yet.</div>';
+}
+let editingId=null, deleteArmed=false;
+function openEditModal(id) {
+  const item=currentItems().find(i=>i.id===id); if(!item) return;
+  editingId=id;
+  document.getElementById('editItemText').value=item.text;
+  document.getElementById('editItemQty').value=item.qty||'';
+  populateEditCatSelect(item.cat);
+  document.getElementById('naToggleBtn').textContent=item.na?'Un-skip':'Skip (N/A)';
+  resetDeleteBtn();
+  document.getElementById('editModal').classList.remove('hidden');
+  setTimeout(()=>document.getElementById('editItemText').focus(),50);
+}
+function toggleNAFromModal(){toggleNA(editingId);closeModal('editModal');}
+function toggleDeleteArmed(){
+  deleteArmed=!deleteArmed;
+  const btn=document.getElementById('deleteBtn');
+  if(deleteArmed){btn.textContent='⚠ Confirm delete';btn.style.cssText='background:#c0392b;color:#fff;border-color:#c0392b';}
+  else resetDeleteBtn();
+}
+function resetDeleteBtn(){
+  deleteArmed=false;
+  const btn=document.getElementById('deleteBtn');
+  if(btn){btn.textContent='Delete';btn.style.cssText='';}
+}
+function saveEdit(){
+  if(deleteArmed){const id=editingId;closeModal('editModal');resetDeleteBtn();state.trips[state.currentTrip].items=currentItems().filter(i=>i.id!==id);save();render();return;}
+  const text=document.getElementById('editItemText').value.trim();
+  const cat=document.getElementById('editItemCat').value;
+  const qty=document.getElementById('editItemQty').value;
+  if(!text) return;
+  const item=currentItems().find(i=>i.id===editingId);
+  if(item){item.text=text;item.cat=cat;item.qty=qty?parseInt(qty):null;}
+  closeModal('editModal');save();render();
+}
+function togglePackItem(id){const item=currentItems().find(i=>i.id===id);if(item&&!item.na){item.checked=!item.checked;save();render();}}
+function toggleNA(id){const item=currentItems().find(i=>i.id===id);if(item){item.na=!item.na;if(item.na)item.checked=false;save();render();}}
+function deletePackItem(id,e){e.stopPropagation();if(!confirm('Remove this item?'))return;state.trips[state.currentTrip].items=currentItems().filter(i=>i.id!==id);save();render();}
+function addItem(){
+  const text=document.getElementById('newItemText').value.trim();
+  const cat=document.getElementById('newItemCat').value;
+  if(!text||!state.currentTrip) return;
+  const qty=document.getElementById('newItemQty').value;
+  currentItems().push({id:Date.now(),text,cat,qty:qty?parseInt(qty):null,checked:false});
+  document.getElementById('newItemText').value='';document.getElementById('newItemQty').value='';
+  save();render();
+}
+function resetChecks(){if(!confirm('Uncheck all items for a fresh trip?'))return;currentItems().forEach(i=>{i.checked=false;i.na=false;});save();render();}
+function showNewTripModal(){document.getElementById('newTripName').value='';document.getElementById('newTripModal').classList.remove('hidden');setTimeout(()=>document.getElementById('newTripName').focus(),50);}
+function createTrip(){
+  const name=document.getElementById('newTripName').value.trim();
+  if(!name)return;
+  if(state.trips[name]){alert('A trip with that name already exists.');return;}
+  state.trips[name]={items:currentItems().map(i=>({...i,id:Date.now()+Math.random(),checked:false}))};
+  state.currentTrip=name;closeModal('newTripModal');save();render();
+}
+function deleteTrip(){
+  const trips=Object.keys(state.trips);
+  if(trips.length<=1){alert("Can't delete your only trip.");return;}
+  if(!confirm(`Delete "${state.currentTrip}"?`))return;
+  delete state.trips[state.currentTrip];state.currentTrip=Object.keys(state.trips)[0];save();render();
+}
+function closeModal(id){
+  document.getElementById(id).classList.add('hidden');
+  if(id==='editModal')resetDeleteBtn();
+  if(id==='shopEditModal')resetShopDeleteBtn();
+}
+
+// ============================================================
+// SHOPPING
+// ============================================================
+let shopFilter='all', shopSearch='', addFavToggle=false;
+function shopItems(){return state.shopping.items;}
+function setShopFilter(f,el){
+  shopFilter=f;
+  document.querySelectorAll('#shopControls .filter-btn').forEach(b=>b.classList.remove('active','orange-active'));
+  el.classList.add(f==='needed'?'orange-active':'active');
+  renderShop();
+}
+function onShopSearch(){
+  shopSearch=document.getElementById('shopSearch').value.toLowerCase();
+  document.getElementById('shopSearchClear').classList.toggle('visible',shopSearch.length>0);
+  renderShop();
+}
+function clearShopSearch(){document.getElementById('shopSearch').value='';shopSearch='';document.getElementById('shopSearchClear').classList.remove('visible');renderShop();}
+function renderShop(){
+  const items=shopItems();
+  const count=items.filter(i=>i.needed).length;
+  const countEl=document.getElementById('shopNeededCount');
+  countEl.textContent=count;
+  countEl.className='needed-count'+(count===0?' zero':'');
+  document.getElementById('shopNeededLabel').textContent=count===1?'item needed':'items needed';
+  const addSel=document.getElementById('shopNewCat');
+  const curVal=addSel.value;
+  addSel.innerHTML=SHOP_CATEGORIES.filter(c=>c!=='Favourites').map(c=>`<option value="${c}">${c}</option>`).join('');
+  if(curVal&&addSel.querySelector(`option[value="${curVal}"]`))addSel.value=curVal;
+  const container=document.getElementById('shopList');
+  container.innerHTML='';
+  const grouped={};
+  SHOP_CATEGORIES.forEach(c=>grouped[c]=[]);
+  items.forEach(item=>{
+    const ms=!shopSearch||item.text.toLowerCase().includes(shopSearch);
+    const mf=shopFilter==='all'||(shopFilter==='needed'&&item.needed);
+    if(!ms||!mf) return;
+    if(item.fav)grouped['Favourites'].push(item);
+    else{if(!grouped[item.cat])grouped[item.cat]=[];grouped[item.cat].push(item);}
+  });
+  let anyVisible=false;
+  SHOP_CATEGORIES.forEach(cat=>{
+    const catItems=grouped[cat];
+    if(!catItems||catItems.length===0) return;
+    anyVisible=true;
+    const section=document.createElement('div');
+    section.className='section';
+    const neededInCat=catItems.filter(i=>i.needed).length;
+    const isFav=cat==='Favourites';
+    section.innerHTML=`<div class="section-header">
+      <span>${isFav?'<span class="fav-star">⭐</span>':''} ${cat}</span>
+      ${neededInCat>0?`<span class="section-count" style="background:var(--orange-soft);color:var(--orange);border:1px solid rgba(240,160,48,0.3)">${neededInCat} needed</span>`:'<span class="section-count">✓ stocked</span>'}
+    </div>`;
+    catItems.forEach(item=>{
+      const div=document.createElement('div');
+      div.className='item '+(item.needed?'needed':'instock');
+      div.innerHTML=`
+        <div class="shop-check"><svg width="12" height="9" viewBox="0 0 12 9" fill="none"><path d="M1 4L4.5 7.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <span class="item-text">${item.text}</span>
+        ${item.fav?'<span class="fav-badge">⭐</span>':''}
+        ${item.needed?'<span class="needed-pill">NEEDED</span>':''}
+        <button class="item-delete" onclick="deleteShopItem(${item.id},event)">×</button>`;
+      let pt=null,dl=false;
+      div.addEventListener('pointerdown',()=>{dl=false;pt=setTimeout(()=>{dl=true;openShopEditModal(item.id);},500);});
+      div.addEventListener('pointerup',()=>clearTimeout(pt));
+      div.addEventListener('pointercancel',()=>clearTimeout(pt));
+      div.addEventListener('click',e=>{if(dl){e.stopPropagation();return;}toggleShopItem(item.id);});
+      section.appendChild(div);
+    });
+    container.appendChild(section);
+  });
+  if(!anyVisible){
+    if(shopFilter==='needed') container.innerHTML='<div class="empty">🎉 Nothing needed right now!</div>';
+    else if(shopSearch) container.innerHTML='<div class="empty">No items match your search.</div>';
+    else container.innerHTML='<div class="empty">No items yet.</div>';
+  }
+}
+function toggleShopItem(id){const item=shopItems().find(i=>i.id===id);if(item){item.needed=!item.needed;save();renderShop();}}
+function deleteShopItem(id,e){e.stopPropagation();if(!confirm('Remove this item?'))return;state.shopping.items=shopItems().filter(i=>i.id!==id);save();renderShop();}
+let shopEditingId=null, shopDeleteArmed=false;
+function openShopEditModal(id){
+  const item=shopItems().find(i=>i.id===id);if(!item)return;
+  shopEditingId=id;
+  document.getElementById('shopEditText').value=item.text;
+  const catSel=document.getElementById('shopEditCat');
+  catSel.innerHTML=SHOP_CATEGORIES.filter(c=>c!=='Favourites').map(c=>`<option value="${c}" ${c===item.cat?'selected':''}>${c}</option>`).join('');
+  const favBtn=document.getElementById('shopFavToggleBtn');
+  favBtn.textContent=item.fav?'⭐ Remove from favourites':'⭐ Make favourite';
+  favBtn.style.cssText=item.fav?'background:var(--orange-soft);border-color:var(--orange);color:var(--orange)':'';
+  resetShopDeleteBtn();
+  document.getElementById('shopEditModal').classList.remove('hidden');
+  setTimeout(()=>document.getElementById('shopEditText').focus(),50);
+}
+function toggleShopFavFromModal(){
+  const item=shopItems().find(i=>i.id===shopEditingId);
+  if(item){
+    item.fav=!item.fav;
+    const favBtn=document.getElementById('shopFavToggleBtn');
+    favBtn.textContent=item.fav?'⭐ Remove from favourites':'⭐ Make favourite';
+    favBtn.style.cssText=item.fav?'background:var(--orange-soft);border-color:var(--orange);color:var(--orange)':'';
+  }
+}
+function toggleShopDeleteArmed(){
+  shopDeleteArmed=!shopDeleteArmed;
+  const btn=document.getElementById('shopDeleteBtn');
+  if(shopDeleteArmed){btn.textContent='⚠ Confirm delete';btn.style.cssText='background:#c0392b;color:#fff;border-color:#c0392b';}
+  else resetShopDeleteBtn();
+}
+function resetShopDeleteBtn(){shopDeleteArmed=false;const btn=document.getElementById('shopDeleteBtn');if(btn){btn.textContent='Delete';btn.style.cssText='';}}
+function saveShopEdit(){
+  if(shopDeleteArmed){const id=shopEditingId;closeModal('shopEditModal');resetShopDeleteBtn();state.shopping.items=shopItems().filter(i=>i.id!==id);save();renderShop();return;}
+  const text=document.getElementById('shopEditText').value.trim();
+  const cat=document.getElementById('shopEditCat').value;
+  if(!text)return;
+  const item=shopItems().find(i=>i.id===shopEditingId);
+  if(item){item.text=text;item.cat=cat;}
+  closeModal('shopEditModal');save();renderShop();
+}
+function toggleAddFav(){
+  addFavToggle=!addFavToggle;
+  const btn=document.getElementById('shopFavBtn');
+  btn.classList.toggle('on',addFavToggle);
+}
+function addShopItem(){
+  const text=document.getElementById('shopNewText').value.trim();
+  const cat=document.getElementById('shopNewCat').value;
+  if(!text)return;
+  state.shopping.items.push({id:Date.now(),text,cat,fav:addFavToggle,needed:true});
+  document.getElementById('shopNewText').value='';
+  addFavToggle=false;document.getElementById('shopFavBtn').classList.remove('on');
+  save();renderShop();
+}
+
+// ============================================================
+// INIT
+// ============================================================
+document.body.className='filter-'+packFilter;
+render();
+renderShop();
+</script>
+</body>
+</html>
