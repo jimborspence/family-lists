@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Family Lists</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client"></script>
 <style>
   :root {
     --bg: #0a0a0f; --surface: #13131a; --surface2: #1c1c27; --border: #2a2a3a;
@@ -267,13 +268,11 @@
 </div>
 
 <!-- Google Identity Services -->
-<script src="https://accounts.google.com/gsi/client" async defer></script>
-
 <script>
 // ============================================================
 // CONFIG — fill these in after Google Cloud setup
 // ============================================================
-const GOOGLE_CLIENT_ID = '750839557042-fulpg7hnerivo7ahrv5mdpm4e63kpga7.apps.googleusercontent.com’
+const GOOGLE_CLIENT_ID = 'YOUR_CLIENT_ID_HERE';
 const DRIVE_FILE_NAME  = 'family-lists-data.json';
 const SCOPES           = 'https://www.googleapis.com/auth/drive.appdata';
 
@@ -295,6 +294,10 @@ function setSyncStatus(status, msg) {
 }
 
 function handleSignIn() {
+  if (typeof google === 'undefined') {
+    alert('Google Sign-In is still loading. Please wait a moment and try again.');
+    return;
+  }
   const client = google.accounts.oauth2.initTokenClient({
     client_id: GOOGLE_CLIENT_ID,
     scope: SCOPES,
