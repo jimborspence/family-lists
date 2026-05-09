@@ -4,792 +4,1080 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Family Lists</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-<script src="https://accounts.google.com/gsi/client"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg: #0a0a0f; --surface: #13131a; --surface2: #1c1c27; --border: #2a2a3a;
-    --accent: #5b9cf6; --accent-soft: rgba(91,156,246,0.12);
-    --text: #e8e8f0; --text-muted: #666680; --checked-text: #9090a8;
-    --red: #f06; --green: #2ecc71; --orange: #f0a030; --orange-soft: rgba(240,160,48,0.12);
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; min-height: 100vh; padding-bottom: 20px; }
+:root {
+  --bg: #0a0a0f;
+  --surface: #13131a;
+  --surface2: #1c1c27;
+  --surface3: #22222f;
+  --border: #2a2a3a;
+  --accent: #5b9cf6;
+  --accent-soft: rgba(91,156,246,0.12);
+  --text: #e8e8f0;
+  --text-muted: #666680;
+  --text-dim: #9090a8;
+  --red: #ff453a;
+  --red-soft: rgba(255,69,58,0.12);
+  --orange: #ff9f0a;
+  --orange-soft: rgba(255,159,10,0.12);
+  --green: #32d74b;
+  --green-soft: rgba(50,215,75,0.12);
+  --yellow: #ffd60a;
+  --purple: #bf5af2;
+  --pink: #ff375f;
+  --teal: #5ac8fa;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; min-height: 100vh; padding-bottom: 80px; }
+input, select, textarea, button { font-family: inherit; }
 
-  /* SYNC STATUS */
-  .sync-bar {
-    background: var(--surface2); border-bottom: 1px solid var(--border);
-    padding: 6px 16px; display: flex; align-items: center; justify-content: space-between;
-    font-size: 11px; color: var(--text-muted); min-height: 30px;
-  }
-  .sync-dot { width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; flex-shrink: 0; display: inline-block; }
-  .sync-dot.green { background: var(--green); }
-  .sync-dot.orange { background: var(--orange); animation: pulse 1.2s infinite; }
-  .sync-dot.red { background: var(--red); }
-  .sync-dot.grey { background: #555; }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
-  .sync-left { display: flex; align-items: center; }
-  .signin-btn {
-    background: var(--accent); color: #fff; border: none; padding: 4px 10px;
-    border-radius: 6px; font-family: 'DM Sans', sans-serif; font-size: 11px;
-    cursor: pointer; font-weight: 500;
-  }
+/* ── MODE BAR ── */
+.mode-bar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  position: sticky;
+  top: 0;
+  z-index: 300;
+  backdrop-filter: blur(12px);
+}
+.mode-tab {
+  flex: 1; padding: 13px 4px 11px; text-align: center;
+  font-size: 11px; font-weight: 600; color: var(--text-muted);
+  cursor: pointer; border-bottom: 2px solid transparent;
+  transition: all 0.2s; letter-spacing: 0.4px; user-select: none;
+  text-transform: uppercase;
+}
+.mode-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
 
-  /* MODE BAR */
-  .mode-bar { background: var(--surface); border-bottom: 1px solid var(--border); display: flex; padding: 0 20px; }
-  .mode-tab { flex: 1; padding: 12px 0; text-align: center; font-size: 13px; font-weight: 500; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; }
-  .mode-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+/* ── PANELS ── */
+.panel { display: none; }
+.panel.active { display: block; }
 
-  /* HEADER */
-  .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 16px 20px 14px; position: sticky; top: 0; z-index: 100; }
-  .header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-  h1 { font-family: 'DM Serif Display', serif; font-size: 26px; color: var(--accent); letter-spacing: -0.5px; }
-  .trip-selector { display: flex; align-items: center; gap: 8px; }
-  select { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 7px 12px; border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 13px; cursor: pointer; max-width: 160px; }
-  .btn { background: var(--surface2); border: 1px solid var(--border); color: var(--text-muted); padding: 7px 12px; border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 13px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
-  .btn:hover { border-color: var(--accent); color: var(--accent); }
-  .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
-  .btn.danger:hover { border-color: var(--red); color: var(--red); }
+/* ══════════════════════════════════════════
+   SHARED COMPONENTS
+══════════════════════════════════════════ */
+.sticky-header {
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  padding: 14px 18px 12px; position: sticky; top: 41px; z-index: 200;
+}
+.header-row { display: flex; align-items: center; justify-content: space-between; }
+.panel-title { font-family: 'DM Serif Display', serif; font-size: 24px; color: var(--accent); letter-spacing: -0.5px; }
+.btn { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 7px 13px; border-radius: 9px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+.btn:hover { border-color: var(--accent); color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.primary:hover { opacity: 0.85; }
+.btn.danger { color: var(--red); }
+.btn.danger:hover { border-color: var(--red); background: var(--red-soft); }
 
-  /* PROGRESS */
-  .progress-bar { height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
-  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), #7ec8e3); border-radius: 2px; transition: width 0.4s ease; }
-  .progress-label { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; display: flex; justify-content: space-between; }
+/* Modal */
+.modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000; backdrop-filter: blur(4px); align-items: flex-end; justify-content: center; }
+.modal-bg.open { display: flex; }
+.modal { background: var(--surface); border: 1px solid var(--border); border-radius: 20px 20px 0 0; padding: 20px 20px 36px; width: 100%; max-width: 600px; }
+.modal-title { font-size: 17px; font-weight: 600; margin-bottom: 16px; }
+.modal-field { margin-bottom: 12px; }
+.modal-field label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 5px; font-weight: 500; letter-spacing: 0.3px; }
+.modal-field input, .modal-field select, .modal-field textarea {
+  width: 100%; background: var(--surface2); border: 1px solid var(--border);
+  color: var(--text); padding: 10px 13px; border-radius: 10px; font-size: 14px;
+}
+.modal-field input:focus, .modal-field select:focus, .modal-field textarea:focus { outline: none; border-color: var(--accent); }
+.modal-field textarea { resize: none; height: 72px; }
+.modal-actions { display: flex; gap: 8px; margin-top: 16px; }
+.modal-actions .btn { flex: 1; text-align: center; }
 
-  /* SHOPPING HEADER */
-  .needed-count { font-size: 22px; font-family: 'DM Serif Display', serif; color: var(--orange); line-height: 1; }
-  .needed-count.zero { color: var(--green); }
-  .needed-label { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+/* ══════════════════════════════════════════
+   REMINDERS TAB
+══════════════════════════════════════════ */
+.rem-view-toggle {
+  display: flex; gap: 6px; margin-top: 10px;
+}
+.rem-view-btn {
+  padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 600;
+  cursor: pointer; border: 1px solid var(--border); color: var(--text-muted);
+  transition: all 0.15s; user-select: none; letter-spacing: 0.2px;
+}
+.rem-view-btn.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
 
-  /* SEARCH */
-  .search-wrap { position: relative; margin-top: 10px; }
-  .search-input { width: 100%; background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 9px 14px 9px 36px; border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 14px; outline: none; transition: border-color 0.15s; }
-  .search-input:focus { border-color: var(--accent); }
-  .search-input::placeholder { color: var(--text-muted); }
-  .search-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 15px; pointer-events: none; }
-  .search-clear { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 16px; padding: 2px 5px; display: none; }
-  .search-clear.visible { display: block; }
+/* List cards grid (home view) */
+.rem-home { padding: 16px 18px; }
+.rem-home-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+.rem-list-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+  padding: 14px 14px 12px; cursor: pointer; transition: all 0.15s; position: relative; overflow: hidden;
+}
+.rem-list-card:hover { border-color: var(--border); background: var(--surface2); }
+.rem-list-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; border-radius: 14px 14px 0 0; }
+.rem-list-icon { font-size: 22px; margin-bottom: 6px; }
+.rem-list-name { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+.rem-list-count { font-size: 22px; font-weight: 700; color: var(--text-muted); }
+.rem-list-card.ref { opacity: 0.7; }
+.rem-list-card.ref .rem-list-name::after { content: ' ·  ref'; font-size: 11px; color: var(--text-muted); font-weight: 400; }
 
-  /* CONTROLS */
-  .controls { display: flex; gap: 8px; flex-wrap: wrap; padding: 10px 20px; border-bottom: 1px solid var(--border); background: var(--surface); }
-  .filter-btn { background: transparent; border: 1px solid var(--border); color: var(--text-muted); padding: 5px 12px; border-radius: 20px; font-family: 'DM Sans', sans-serif; font-size: 12px; cursor: pointer; transition: all 0.15s; }
-  .filter-btn.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
-  .filter-btn.orange-active { background: var(--orange-soft); border-color: var(--orange); color: var(--orange); }
+/* Scheduled view */
+.rem-scheduled { padding: 0 18px 16px; }
+.rem-group-header {
+  font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+  color: var(--text-muted); padding: 20px 0 8px;
+}
+.rem-item {
+  display: flex; align-items: flex-start; gap: 12px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 11px; padding: 11px 13px; margin-bottom: 6px;
+  cursor: pointer; transition: all 0.15s;
+}
+.rem-item:hover { border-color: var(--border); background: var(--surface2); }
+.rem-item.overdue { border-color: rgba(255,69,58,0.3); background: rgba(255,69,58,0.05); }
+.rem-item.urgent { border-color: rgba(255,159,10,0.35); background: rgba(255,159,10,0.06); }
+.rem-circle {
+  width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border);
+  flex-shrink: 0; margin-top: 1px; transition: all 0.15s; display: flex; align-items: center; justify-content: center;
+}
+.rem-circle:hover { border-color: var(--accent); }
+.rem-circle.done { background: var(--accent); border-color: var(--accent); }
+.rem-circle.done::after { content: '✓'; color: #fff; font-size: 12px; font-weight: 700; }
+.rem-item-body { flex: 1; min-width: 0; }
+.rem-item-title { font-size: 14px; font-weight: 500; line-height: 1.3; }
+.rem-item-title.done { text-decoration: line-through; color: var(--text-muted); }
+.rem-item-meta { display: flex; align-items: center; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
+.rem-item-date { font-size: 12px; color: var(--text-muted); }
+.rem-item-date.overdue { color: var(--red); font-weight: 600; }
+.rem-item-date.soon { color: var(--orange); font-weight: 600; }
+.rem-item-list-tag { font-size: 11px; padding: 2px 7px; border-radius: 10px; font-weight: 600; }
+.rem-item-note { font-size: 12px; color: var(--text-muted); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.rem-priority-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; margin-top: 7px; }
+.urgent-badge { font-size: 11px; background: var(--orange-soft); color: var(--orange); border: 1px solid rgba(255,159,10,0.3); padding: 2px 7px; border-radius: 8px; font-weight: 700; }
+.deadline-badge { font-size: 11px; background: var(--red-soft); color: var(--red); border: 1px solid rgba(255,69,58,0.3); padding: 2px 7px; border-radius: 8px; font-weight: 700; }
 
-  /* SECTIONS & ITEMS */
-  .section { margin: 0; }
-  .section-header { padding: 14px 20px 6px; font-size: 10px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-muted); display: flex; align-items: center; justify-content: space-between; }
-  .section-count { font-size: 11px; background: var(--surface2); padding: 2px 7px; border-radius: 10px; letter-spacing: 0; font-weight: 500; text-transform: none; }
-  .fav-star { color: var(--orange); margin-right: 5px; font-size: 11px; }
-  .item { display: flex; align-items: center; gap: 14px; padding: 13px 20px; border-bottom: 1px solid rgba(255,255,255,0.03); transition: background 0.15s; cursor: pointer; user-select: none; }
-  .item:hover { background: var(--surface2); }
-  .checkbox { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
-  .item.checked .checkbox { background: var(--accent); border-color: var(--accent); }
-  .checkbox svg { display: none; }
-  .item.checked .checkbox svg { display: block; }
-  .shop-check { width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.2s; border: 2px solid var(--border); }
-  .item.instock .shop-check { background: var(--surface2); border-color: #2a2a3a; }
-  .item.instock .shop-check svg { display: none; }
-  .item.needed .shop-check { background: var(--orange); border-color: var(--orange); }
-  .item.needed .shop-check svg { display: block; }
-  .item.needed .item-text { color: var(--text); font-weight: 500; }
-  .item.instock .item-text { color: var(--text-muted); }
-  .item-text { font-size: 16px; font-weight: 400; flex: 1; line-height: 1.3; transition: all 0.2s; }
-  .item.checked .item-text { color: var(--checked-text); }
-  body.filter-all .item.checked .item-text { text-decoration: line-through; text-decoration-color: #44445a; text-decoration-thickness: 1px; }
-  .item-delete { opacity: 0; background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; border-radius: 4px; font-size: 16px; line-height: 1; transition: all 0.15s; flex-shrink: 0; }
-  .item:hover .item-delete { opacity: 1; }
-  .item-delete:hover { color: var(--red); }
-  .item-qty { font-size: 12px; font-weight: 600; color: var(--accent); background: var(--accent-soft); border: 1px solid rgba(91,156,246,0.25); border-radius: 20px; padding: 2px 9px; flex-shrink: 0; }
-  .item.checked .item-qty { opacity: 0.3; }
-  .fav-badge { font-size: 13px; flex-shrink: 0; opacity: 0.7; }
-  .item.na { opacity: 0.35; }
-  .item.na .item-text { text-decoration: line-through; text-decoration-style: dashed; text-decoration-color: #555; color: var(--text-muted); }
-  .na-badge { font-size: 10px; font-weight: 700; color: #555; background: #1e1e1e; border: 1px solid #333; border-radius: 4px; padding: 2px 6px; flex-shrink: 0; }
-  .needed-pill { font-size: 10px; font-weight: 700; background: var(--orange); color: #000; border-radius: 10px; padding: 2px 7px; flex-shrink: 0; }
+/* List detail view */
+.rem-list-detail { display: none; }
+.rem-list-detail.open { display: block; }
+.rem-back-btn { display: flex; align-items: center; gap: 6px; color: var(--accent); font-size: 14px; font-weight: 500; cursor: pointer; padding: 12px 18px 0; }
+.rem-back-btn:hover { opacity: 0.75; }
+.rem-detail-header { padding: 8px 18px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+.rem-detail-icon { font-size: 26px; }
+.rem-detail-title { font-family: 'DM Serif Display', serif; font-size: 22px; }
+.rem-detail-count { font-size: 13px; color: var(--text-muted); }
+.rem-detail-items { padding: 10px 18px; }
+.rem-detail-item {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 11px 0; border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+.rem-detail-item:last-child { border-bottom: none; }
+.rem-detail-item.ref-item { cursor: default; }
+.rem-detail-item-body { flex: 1; min-width: 0; }
+.rem-detail-title-text { font-size: 14px; font-weight: 500; line-height: 1.35; }
+.rem-detail-title-text.done { text-decoration: line-through; color: var(--text-muted); }
+.rem-detail-note { font-size: 12px; color: var(--text-muted); margin-top: 3px; line-height: 1.4; }
+.rem-detail-date { font-size: 12px; margin-top: 3px; }
+.add-rem-row { display: flex; gap: 8px; padding: 14px 18px 0; }
+.add-rem-row input { flex: 1; background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 10px 13px; border-radius: 10px; font-size: 14px; }
+.add-rem-row input:focus { outline: none; border-color: var(--accent); }
 
-  /* ADD AREA */
-  .add-area { position: sticky; bottom: 0; background: var(--surface); border-top: 1px solid var(--border); padding: 10px 16px 14px; display: flex; gap: 8px; flex-direction: column; z-index: 50; }
-  .add-row { display: flex; gap: 8px; }
-  .add-input { flex: 1; min-width: 0; background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 10px 14px; border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 15px; outline: none; transition: border-color 0.15s; }
-  .add-input::placeholder { color: var(--text-muted); }
-  .add-input:focus { border-color: var(--accent); }
-  .cat-select { flex: 1; min-width: 0; background: var(--surface2); border: 1px solid var(--border); color: var(--text-muted); padding: 10px; border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 13px; cursor: pointer; }
-  .fav-toggle-btn { background: none; border: 1px solid var(--border); color: var(--text-muted); padding: 10px 12px; border-radius: 10px; cursor: pointer; font-size: 16px; transition: all 0.15s; flex-shrink: 0; }
-  .fav-toggle-btn.on { border-color: var(--orange); color: var(--orange); background: var(--orange-soft); }
+/* Meds reference */
+.meds-ref-item {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 11px;
+  padding: 12px 14px; margin-bottom: 6px;
+}
+.meds-ref-name { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+.meds-ref-note { font-size: 12px; color: var(--text-muted); }
+.meds-ref-badge { display: inline-block; font-size: 10px; background: var(--surface2); border: 1px solid var(--border); color: var(--text-muted); padding: 1px 7px; border-radius: 8px; margin-bottom: 5px; font-weight: 600; letter-spacing: 0.3px; text-transform: uppercase; }
 
-  /* MODALS */
-  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px; }
-  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 24px; width: 100%; max-width: 340px; }
-  .modal h2 { font-family: 'DM Serif Display', serif; font-size: 20px; margin-bottom: 16px; color: var(--text); }
-  .modal input, .modal select { width: 100%; background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 10px 14px; border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 15px; outline: none; margin-bottom: 12px; cursor: pointer; }
-  .modal input:focus { border-color: var(--accent); }
-  .modal-btns { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
-  .hidden { display: none !important; }
-  .empty { text-align: center; color: var(--text-muted); padding: 60px 20px; font-size: 14px; }
+/* Annual renewals — timeline style */
+.renewal-item {
+  display: flex; align-items: flex-start; gap: 12px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 11px;
+  padding: 11px 13px; margin-bottom: 6px; cursor: pointer; transition: all 0.15s;
+}
+.renewal-item:hover { background: var(--surface2); }
+.renewal-month-badge {
+  min-width: 46px; text-align: center; padding: 4px 6px; border-radius: 8px;
+  background: var(--surface2); border: 1px solid var(--border); flex-shrink: 0;
+}
+.renewal-month { font-size: 10px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--text-muted); }
+.renewal-day { font-size: 18px; font-weight: 700; color: var(--text); line-height: 1; }
+.renewal-body { flex: 1; }
+.renewal-name { font-size: 14px; font-weight: 500; }
+.renewal-note { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.renewal-auto { font-size: 10px; background: var(--green-soft); color: var(--green); border: 1px solid rgba(50,215,75,0.2); padding: 1px 6px; border-radius: 6px; font-weight: 600; display: inline-block; margin-top: 4px; }
+.renewal-manual { font-size: 10px; background: var(--orange-soft); color: var(--orange); border: 1px solid rgba(255,159,10,0.2); padding: 1px 6px; border-radius: 6px; font-weight: 600; display: inline-block; margin-top: 4px; }
+
+/* ══════════════════════════════════════════
+   HOLIDAY PACKING
+══════════════════════════════════════════ */
+.pack-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+.filter-tabs { display: flex; gap: 5px; }
+.filter-tab { padding: 5px 11px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid var(--border); color: var(--text-muted); transition: all 0.15s; user-select: none; }
+.filter-tab.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.progress-bar { height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; margin-top: 10px; }
+.progress-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.3s ease; }
+.pack-section { padding: 0 18px; }
+.section-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 0 7px; }
+.section-title { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); }
+.pack-item { display: flex; align-items: center; gap: 12px; padding: 10px 13px; background: var(--surface); border-radius: 10px; margin-bottom: 5px; cursor: pointer; transition: all 0.15s; border: 1px solid var(--border); }
+.pack-item:hover { background: var(--surface2); }
+.pack-check { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+.pack-item.checked .pack-check { background: var(--accent); border-color: var(--accent); }
+.pack-item.checked .pack-check::after { content: '✓'; color: #fff; font-size: 12px; font-weight: 700; }
+.pack-label { font-size: 14px; transition: all 0.2s; }
+.pack-item.checked .pack-label { color: var(--text-muted); text-decoration: line-through; }
+.pack-add-row { display: flex; gap: 8px; padding: 12px 18px 0; }
+.pack-add-row input { flex: 1; background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 10px 13px; border-radius: 10px; font-size: 14px; }
+.pack-add-row input:focus { outline: none; border-color: var(--accent); }
+select { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 7px 12px; border-radius: 9px; font-size: 13px; cursor: pointer; appearance: none; padding-right: 28px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23666680'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 9px center; }
+
+/* ══════════════════════════════════════════
+   SHOPPING
+══════════════════════════════════════════ */
+.shop-section { padding: 0 18px; }
+.shop-item { display: flex; align-items: center; gap: 12px; padding: 10px 13px; background: var(--surface); border-radius: 10px; margin-bottom: 5px; cursor: pointer; transition: all 0.15s; border: 1px solid var(--border); }
+.shop-item:hover { background: var(--surface2); }
+.shop-check { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+.shop-item.needed .shop-check { border-color: var(--red); }
+.shop-item.in-stock .shop-check { background: var(--surface3); border-color: var(--border); }
+.shop-item.in-stock .shop-check::after { content: '✓'; color: var(--text-muted); font-size: 12px; font-weight: 700; }
+.shop-label { font-size: 14px; }
+.shop-item.in-stock .shop-label { color: var(--text-muted); }
+.fav-star { margin-left: auto; color: var(--orange); font-size: 14px; flex-shrink: 0; }
+.shop-add-row { display: flex; gap: 8px; padding: 12px 18px 0; }
+.shop-add-row input { flex: 1; background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 10px 13px; border-radius: 10px; font-size: 14px; }
+.shop-add-row input:focus { outline: none; border-color: var(--accent); }
+.fav-btn-toggle { padding: 10px 13px; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; cursor: pointer; font-size: 16px; transition: all 0.15s; }
+.fav-btn-toggle.on { background: var(--orange-soft); border-color: var(--orange); }
 </style>
 </head>
 <body>
 
-<!-- SYNC STATUS BAR -->
-<div class="sync-bar" id="syncBar">
-  <div class="sync-left">
-    <span class="sync-dot grey" id="syncDot"></span>
-    <span id="syncMsg">Not signed in</span>
-  </div>
-  <button class="signin-btn" id="signinBtn" onclick="handleSignIn()">Sign in with Google</button>
-</div>
-
-<!-- MODE TABS -->
+<!-- MODE BAR -->
 <div class="mode-bar">
-  <div class="mode-tab active" id="tabPacking" onclick="switchMode('packing')">✈ Holiday Packing</div>
-  <div class="mode-tab" id="tabShopping" onclick="switchMode('shopping')">🛒 Shopping</div>
+  <div class="mode-tab active" onclick="switchMode('reminders')">☑ Reminders</div>
+  <div class="mode-tab" onclick="switchMode('packing')">✈ Packing</div>
+  <div class="mode-tab" onclick="switchMode('shopping')">🛒 Shopping</div>
 </div>
 
-<!-- ===== PACKING MODE ===== -->
-<div id="packingMode">
-  <div class="header">
-    <div class="header-top">
-      <h1>✈ Holiday Packing</h1>
-      <div class="trip-selector">
-        <select id="tripSelect" onchange="loadTrip()"></select>
-        <button class="btn" onclick="showNewTripModal()">+ Trip</button>
+<!-- ══════════════════════════════════════════
+     REMINDERS PANEL
+══════════════════════════════════════════ -->
+<div id="panel-reminders" class="panel active">
+
+  <!-- Home / List overview -->
+  <div id="rem-home-view">
+    <div class="sticky-header">
+      <div class="header-row">
+        <span class="panel-title">Reminders</span>
+        <button class="btn primary" onclick="openAddModal()">+ Add</button>
+      </div>
+      <div class="rem-view-toggle">
+        <div class="rem-view-btn active" id="vbtn-lists" onclick="setRemView('lists')">My Lists</div>
+        <div class="rem-view-btn" id="vbtn-scheduled" onclick="setRemView('scheduled')">Scheduled</div>
       </div>
     </div>
-    <div class="progress-label">
-      <span id="progressLabel">0 of 0 packed</span>
-      <span id="progressPct">0%</span>
-    </div>
-    <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
-  </div>
-  <div class="controls">
-    <button class="filter-btn active" onclick="setFilter('all',this)">All</button>
-    <button class="filter-btn" onclick="setFilter('todo',this)">To pack</button>
-    <button class="filter-btn" onclick="setFilter('done',this)">Packed ✓</button>
-    <button class="btn" style="margin-left:auto" onclick="resetChecks()">Reset for trip</button>
-    <button class="btn danger" onclick="deleteTrip()">Delete trip</button>
-  </div>
-  <div id="packingList"></div>
-  <div class="add-area">
-    <div class="add-row">
-      <input class="add-input" id="newItemText" placeholder="Add item…" onkeydown="if(event.key==='Enter')addItem()">
-      <input class="add-input" id="newItemQty" type="number" placeholder="Qty" min="1" style="width:64px;flex:none;">
-    </div>
-    <div class="add-row">
-      <select class="cat-select" id="newItemCat"></select>
-      <button class="btn" onclick="promptNewCategory('add')" style="padding:10px 9px;flex-shrink:0;" title="New category">＋</button>
-      <button class="btn primary" onclick="addItem()">Add</button>
-    </div>
-  </div>
-</div>
 
-<!-- ===== SHOPPING MODE ===== -->
-<div id="shoppingMode" class="hidden">
-  <div class="header">
-    <div class="header-top">
-      <h1>🛒 Shopping</h1>
+    <!-- Lists grid -->
+    <div id="rem-lists-view">
+      <div class="rem-home rem-home-grid" id="rem-grid"></div>
+    </div>
+
+    <!-- Scheduled view -->
+    <div id="rem-scheduled-view" style="display:none">
+      <div class="rem-scheduled" id="rem-scheduled-content"></div>
+    </div>
+  </div>
+
+  <!-- List detail view -->
+  <div id="rem-detail-view" style="display:none">
+    <div class="rem-back-btn" onclick="closeDetail()">‹ Back</div>
+    <div class="rem-detail-header">
+      <span class="rem-detail-icon" id="detail-icon"></span>
       <div>
-        <span id="shopNeededCount" class="needed-count zero">0</span><br>
-        <span class="needed-label" id="shopNeededLabel">items needed</span>
+        <div class="rem-detail-title" id="detail-title"></div>
+        <div class="rem-detail-count" id="detail-count"></div>
       </div>
     </div>
-    <div class="search-wrap">
-      <span class="search-icon">🔍</span>
-      <input class="search-input" id="shopSearch" placeholder="Search items…" oninput="onShopSearch()">
-      <button class="search-clear" id="shopSearchClear" onclick="clearShopSearch()">×</button>
-    </div>
-  </div>
-  <div class="controls" id="shopControls">
-    <button class="filter-btn active" onclick="setShopFilter('all',this)">All items</button>
-    <button class="filter-btn" onclick="setShopFilter('needed',this)">Needed 🛒</button>
-  </div>
-  <div id="shopList"></div>
-  <div class="add-area">
-    <div class="add-row">
-      <input class="add-input" id="shopNewText" placeholder="Add item…" onkeydown="if(event.key==='Enter')addShopItem()">
-    </div>
-    <div class="add-row">
-      <select class="cat-select" id="shopNewCat"></select>
-      <button class="fav-toggle-btn" id="shopFavBtn" onclick="toggleAddFav()" title="Add to favourites">⭐</button>
-      <button class="btn primary" onclick="addShopItem()">Add</button>
+    <div class="rem-detail-items" id="detail-items"></div>
+    <div class="add-rem-row" id="detail-add-row">
+      <input type="text" id="detail-add-input" placeholder="New reminder…" onkeydown="if(event.key==='Enter')addToCurrentList()">
+      <button class="btn primary" onclick="addToCurrentList()">Add</button>
     </div>
   </div>
 </div>
 
-<!-- PACKING MODALS -->
-<div class="modal-overlay hidden" id="editModal">
-  <div class="modal">
-    <h2>Edit item</h2>
-    <input type="text" id="editItemText" placeholder="Item description">
-    <select id="editItemCat"></select>
-    <input type="number" id="editItemQty" placeholder="Quantity (optional)" min="0">
-    <div class="modal-btns">
-      <button class="btn" id="naToggleBtn" onclick="toggleNAFromModal()">Skip (N/A)</button>
-      <button class="btn" id="deleteBtn" onclick="toggleDeleteArmed()">Delete</button>
-      <button class="btn" onclick="closeModal('editModal')">Cancel</button>
-      <button class="btn primary" onclick="saveEdit()">Save</button>
+<!-- ══════════════════════════════════════════
+     PACKING PANEL
+══════════════════════════════════════════ -->
+<div id="panel-packing" class="panel">
+  <div class="sticky-header">
+    <div class="header-row">
+      <span class="panel-title">✈ Packing</span>
+      <div style="display:flex;gap:8px">
+        <button class="btn" onclick="resetPack()">Reset</button>
+      </div>
+    </div>
+    <div class="pack-controls" style="margin-top:10px">
+      <select id="tripSelect" onchange="savePack()">
+        <option>Disney World</option>
+        <option>Summer Holiday</option>
+        <option>Weekend Away</option>
+        <option>Ski Trip</option>
+      </select>
+      <div class="filter-tabs">
+        <div class="filter-tab active" id="pf-all" onclick="setPackFilter('all')">All</div>
+        <div class="filter-tab" id="pf-todo" onclick="setPackFilter('todo')">To Pack</div>
+        <div class="filter-tab" id="pf-done" onclick="setPackFilter('done')">Packed</div>
+      </div>
+    </div>
+    <div class="progress-bar" style="margin-top:10px">
+      <div class="progress-fill" id="pack-progress"></div>
     </div>
   </div>
-</div>
-<div class="modal-overlay hidden" id="newCatModal">
-  <div class="modal">
-    <h2>New category</h2>
-    <input type="text" id="newCatName" placeholder="e.g. Gym Stuff" onkeydown="if(event.key==='Enter')confirmNewCategory()">
-    <div class="modal-btns">
-      <button class="btn" onclick="closeModal('newCatModal')">Cancel</button>
-      <button class="btn primary" onclick="confirmNewCategory()">Create</button>
-    </div>
+  <div id="pack-body"></div>
+  <div class="pack-add-row">
+    <select id="packCatAdd">
+      <option>Documents</option><option>Clothing</option><option>Toiletries</option>
+      <option>Kids</option><option>Electronics</option><option>Health</option><option>Other</option>
+    </select>
+    <input type="text" id="packNewText" placeholder="Add item…" onkeydown="if(event.key==='Enter')addPackItem()">
+    <button class="btn primary" onclick="addPackItem()">Add</button>
   </div>
 </div>
-<div class="modal-overlay hidden" id="newTripModal">
+
+<!-- ══════════════════════════════════════════
+     SHOPPING PANEL
+══════════════════════════════════════════ -->
+<div id="panel-shopping" class="panel">
+  <div class="sticky-header">
+    <div class="header-row">
+      <span class="panel-title">🛒 Shopping</span>
+      <div style="display:flex;gap:8px">
+        <button class="btn" onclick="resetShop()">Restock</button>
+      </div>
+    </div>
+    <div class="filter-tabs" style="margin-top:10px">
+      <div class="filter-tab active" id="sf-all" onclick="setShopFilter('all')">All</div>
+      <div class="filter-tab" id="sf-needed" onclick="setShopFilter('needed')">Needed</div>
+    </div>
+  </div>
+  <div id="shop-body"></div>
+  <div class="shop-add-row">
+    <button class="fav-btn-toggle" id="shopFavBtn" onclick="toggleAddFav()" title="Add to favourites">⭐</button>
+    <input type="text" id="shopNewText" placeholder="Add item…" onkeydown="if(event.key==='Enter')addShopItem()">
+    <select id="shopNewCat">
+      <option>Favourites</option><option>Fruit & Veg</option><option>Dairy</option>
+      <option>Meat</option><option>Bakery</option><option>Pantry</option>
+      <option>Frozen</option><option>Drinks</option><option>Cleaning</option><option>Other</option>
+    </select>
+    <button class="btn primary" onclick="addShopItem()">Add</button>
+  </div>
+</div>
+
+<!-- Add Reminder Modal -->
+<div class="modal-bg" id="addModal">
   <div class="modal">
-    <h2>New trip</h2>
-    <input type="text" id="newTripName" placeholder="e.g. France 2026" onkeydown="if(event.key==='Enter')createTrip()">
-    <div class="modal-btns">
-      <button class="btn" onclick="closeModal('newTripModal')">Cancel</button>
-      <button class="btn primary" onclick="createTrip()">Create</button>
+    <div class="modal-title">New Reminder</div>
+    <div class="modal-field">
+      <label>Title</label>
+      <input type="text" id="addTitle" placeholder="Reminder title…">
+    </div>
+    <div class="modal-field">
+      <label>List</label>
+      <select id="addList"></select>
+    </div>
+    <div class="modal-field">
+      <label>Target Date (optional)</label>
+      <input type="date" id="addDate">
+    </div>
+    <div class="modal-field">
+      <label>Notes (optional)</label>
+      <textarea id="addNotes" placeholder="Any notes…"></textarea>
+    </div>
+    <div class="modal-field">
+      <label>Priority</label>
+      <select id="addPriority">
+        <option value="none">None</option>
+        <option value="low">Low</option>
+        <option value="medium">Medium</option>
+        <option value="high">High</option>
+      </select>
+    </div>
+    <div class="modal-field" id="deadlineField">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" id="addDeadline" style="width:auto"> Hard deadline (e.g. quote expires)
+      </label>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeAddModal()">Cancel</button>
+      <button class="btn primary" onclick="saveNewReminder()">Add Reminder</button>
     </div>
   </div>
 </div>
 
-<!-- SHOPPING EDIT MODAL -->
-<div class="modal-overlay hidden" id="shopEditModal">
+<!-- Item detail modal -->
+<div class="modal-bg" id="itemModal">
   <div class="modal">
-    <h2>Edit item</h2>
-    <input type="text" id="shopEditText" placeholder="Item name">
-    <select id="shopEditCat"></select>
-    <div class="modal-btns">
-      <button class="btn" id="shopFavToggleBtn" onclick="toggleShopFavFromModal()">⭐ Make favourite</button>
-      <button class="btn" id="shopDeleteBtn" onclick="toggleShopDeleteArmed()">Delete</button>
-      <button class="btn" onclick="closeModal('shopEditModal')">Cancel</button>
-      <button class="btn primary" onclick="saveShopEdit()">Save</button>
+    <div class="modal-title" id="itemModalTitle"></div>
+    <div class="modal-field">
+      <label>Title</label>
+      <input type="text" id="itemEditTitle">
+    </div>
+    <div class="modal-field">
+      <label>Target Date</label>
+      <input type="date" id="itemEditDate">
+    </div>
+    <div class="modal-field">
+      <label>Notes</label>
+      <textarea id="itemEditNotes"></textarea>
+    </div>
+    <div class="modal-field">
+      <label>Priority</label>
+      <select id="itemEditPriority">
+        <option value="none">None</option><option value="low">Low</option>
+        <option value="medium">Medium</option><option value="high">High</option>
+      </select>
+    </div>
+    <div class="modal-field" id="itemDeadlineField">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" id="itemEditDeadline" style="width:auto"> Hard deadline
+      </label>
+    </div>
+    <div class="modal-actions">
+      <button class="btn danger" onclick="deleteCurrentItem()">Delete</button>
+      <button class="btn" onclick="closeItemModal()">Cancel</button>
+      <button class="btn primary" onclick="saveItemEdit()">Save</button>
     </div>
   </div>
 </div>
 
-<!-- Google Identity Services -->
 <script>
-// ============================================================
-// CONFIG — fill these in after Google Cloud setup
-// ============================================================
-const GOOGLE_CLIENT_ID = '750839557042-fulpg7hnerivo7ahrv5mdpm4e63kpga7.apps.googleusercontent.com';
-const DRIVE_FILE_NAME  = 'family-lists-data.json';
-const SCOPES           = 'https://www.googleapis.com/auth/drive.appdata';
-
-// ============================================================
-// GOOGLE DRIVE SYNC
-// ============================================================
-let accessToken = null;
-let driveFileId = null;
-let saveTimer   = null;
-let isSaving    = false;
-
-function setSyncStatus(status, msg) {
-  const dot = document.getElementById('syncDot');
-  const msgEl = document.getElementById('syncMsg');
-  const btn = document.getElementById('signinBtn');
-  dot.className = 'sync-dot ' + status;
-  msgEl.textContent = msg;
-  btn.style.display = (status === 'grey') ? 'inline-block' : 'none';
-}
-
-function handleSignIn() {
-  if (typeof google === 'undefined') {
-    alert('Google Sign-In is still loading. Please wait a moment and try again.');
-    return;
-  }
-  const client = google.accounts.oauth2.initTokenClient({
-    client_id: GOOGLE_CLIENT_ID,
-    scope: SCOPES,
-    callback: async (resp) => {
-      if (resp.error) { setSyncStatus('red', 'Sign-in failed'); return; }
-      accessToken = resp.access_token;
-      setSyncStatus('orange', 'Loading data…');
-      await loadFromDrive();
-    }
-  });
-  client.requestAccessToken();
-}
-
-async function loadFromDrive() {
-  try {
-    // Search for existing file in appDataFolder
-    const searchRes = await fetch(
-      `https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name='${DRIVE_FILE_NAME}'&fields=files(id,name)`,
-      { headers: { Authorization: `Bearer ${accessToken}` } }
-    );
-    const searchData = await searchRes.json();
-
-    if (searchData.files && searchData.files.length > 0) {
-      driveFileId = searchData.files[0].id;
-      const fileRes = await fetch(
-        `https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media`,
-        { headers: { Authorization: `Bearer ${accessToken}` } }
-      );
-      const data = await fileRes.json();
-      state = data;
-      // ensure shopping exists
-      if (!state.shopping) state.shopping = { items: buildDefaultShopItems() };
-      if (!state.trips) { state.trips = { 'My Packing List': { items: DEFAULT_PACKING_ITEMS.map((it,i)=>({id:i,text:it.text,cat:it.cat,checked:false})) } }; state.currentTrip='My Packing List'; }
-      setSyncStatus('green', 'Synced with Drive');
-    } else {
-      // First time — upload defaults
-      setSyncStatus('orange', 'First run — saving defaults…');
-      await saveToDrive();
-      setSyncStatus('green', 'Synced with Drive');
-    }
-    if (!state.currentTrip || !state.trips[state.currentTrip]) state.currentTrip = Object.keys(state.trips)[0] || null;
-    render();
-    renderShop();
-  } catch(e) {
-    setSyncStatus('red', 'Drive error — changes unsaved');
-    console.error(e);
-  }
-}
-
-async function saveToDrive() {
-  if (!accessToken) return;
-  isSaving = true;
-  setSyncStatus('orange', 'Saving…');
-  const body = JSON.stringify(state);
-  try {
-    if (driveFileId) {
-      // Update existing
-      await fetch(`https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=media`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-        body
-      });
-    } else {
-      // Create new in appDataFolder
-      const meta = { name: DRIVE_FILE_NAME, parents: ['appDataFolder'] };
-      const form = new FormData();
-      form.append('metadata', new Blob([JSON.stringify(meta)], { type: 'application/json' }));
-      form.append('file', new Blob([body], { type: 'application/json' }));
-      const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${accessToken}` },
-        body: form
-      });
-      const data = await res.json();
-      driveFileId = data.id;
-    }
-    setSyncStatus('green', 'Saved · ' + new Date().toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'}));
-  } catch(e) {
-    setSyncStatus('red', 'Save failed — check connection');
-    console.error(e);
-  }
-  isSaving = false;
-}
-
-// Debounced save — waits 1.5s after last change before writing to Drive
-function save() {
-  clearTimeout(saveTimer);
-  setSyncStatus('orange', 'Unsaved changes…');
-  saveTimer = setTimeout(saveToDrive, 1500);
-}
-
-// ============================================================
-// DATA DEFAULTS
-// ============================================================
-let PACK_CATEGORIES = ['Documents & Money','Electronics','Clothing','Toiletries & Health','Kids','Sport & Fitness','Food & Drink','Car & Travel','Shoes & Trainers','Gym Stuff','Swimming & Pool','Misc'];
-const SHOP_CATEGORIES = ['Favourites','Bakery & Breakfast','Condiments & Sauces','Tinned & Dry Goods','Dairy & Chilled','Frozen','Snacks & Treats','Drinks','Cleaning & Household','Health & Personal'];
-
-const DEFAULT_PACKING_ITEMS = [
-  {text:'Passports',cat:'Documents & Money'},{text:'Bank Cards',cat:'Documents & Money'},
-  {text:'Driving license',cat:'Documents & Money'},{text:'Jemma driving license',cat:'Documents & Money'},
-  {text:'Proof of car insurance',cat:'Documents & Money'},{text:'Vehicle registration documents',cat:'Documents & Money'},
-  {text:'UK sticker for car',cat:'Car & Travel'},{text:'Driving kit (red pouch)',cat:'Car & Travel'},
-  {text:'£1 coin for the airport trolley',cat:'Car & Travel'},{text:'Gas reading',cat:'Misc'},
-  {text:'Phone chargers',cat:'Electronics'},{text:'Plug extension',cat:'Electronics'},
-  {text:'iPad – Gracie',cat:'Electronics'},{text:'iPad – Monte',cat:'Electronics'},
-  {text:'Kindle',cat:'Electronics'},{text:'Gracie Garmin watch',cat:'Electronics'},
-  {text:'iPhone swimming case – 1',cat:'Swimming & Pool'},{text:"Camera – Monte's Bedroom",cat:'Electronics'},
-  {text:'YouTube Kids subscription – download shows',cat:'Electronics'},
-  {text:'Casual T shirts – 4',cat:'Clothing'},{text:'Casual shorts – 3',cat:'Clothing'},
-  {text:'Casual trousers – 1',cat:'Clothing'},{text:'Jeans',cat:'Clothing'},
-  {text:'Evening short sleeve shirt – 4',cat:'Clothing'},{text:'Smart Shorts – 3',cat:'Clothing'},
-  {text:'Smart shoes – 1',cat:'Shoes & Trainers'},{text:'Swimming shorts – 2',cat:'Swimming & Pool'},
-  {text:'Long sleeve swimming shirts – 3',cat:'Swimming & Pool'},{text:'Gym Kit – 1',cat:'Clothing'},
-  {text:'Hoodie – 2',cat:'Clothing'},{text:'PJs – 1',cat:'Clothing'},
-  {text:'Socks – 5',cat:'Clothing'},{text:'Short socks – 4',cat:'Clothing'},
-  {text:'Pool socks',cat:'Swimming & Pool'},{text:'Boxer shorts – 5',cat:'Clothing'},
-  {text:'Hats – 2',cat:'Clothing'},{text:'Monte cap – 1',cat:'Clothing'},
-  {text:'Crocs',cat:'Shoes & Trainers'},{text:'Gym trainers',cat:'Shoes & Trainers'},
-  {text:'Hankies – 2',cat:'Clothing'},{text:'Winter holiday',cat:'Clothing'},
-  {text:'Wash bag',cat:'Toiletries & Health'},{text:'Ointment',cat:'Toiletries & Health'},
-  {text:'Moisturiser',cat:'Toiletries & Health'},{text:'Children medicines',cat:'Toiletries & Health'},
-  {text:'Tablets',cat:'Toiletries & Health'},{text:'Foam Roller',cat:'Gym Stuff'},
-  {text:'Massage gun',cat:'Gym Stuff'},{text:'Electrolytes',cat:'Gym Stuff'},
-  {text:'Mini fan',cat:'Gym Stuff'},{text:'Water bottle – Jemma',cat:'Food & Drink'},
-  {text:'Water bottle – Gracie',cat:'Food & Drink'},{text:'Water Bottle – Monte',cat:'Food & Drink'},
-  {text:'Water bottle – James',cat:'Food & Drink'},{text:'Running water bottle – 1',cat:'Food & Drink'},
-  {text:'Coffee Travel flask',cat:'Food & Drink'},{text:'Mug – Jemma',cat:'Food & Drink'},
-  {text:'Mug – James',cat:'Food & Drink'},{text:'Goat',cat:'Kids'},
-];
-
-function buildDefaultShopItems() {
-  let id = 1000;
-  return [
-    {text:'Tea bags - large',cat:'Bakery & Breakfast',fav:true},
-    {text:'Branston Pickle',cat:'Condiments & Sauces'},{text:'Tomato Ketchup',cat:'Condiments & Sauces',fav:true},
-    {text:'Tin foil',cat:'Cleaning & Household'},{text:'Fish Fingers',cat:'Frozen'},
-    {text:'Glaze',cat:'Condiments & Sauces'},{text:'Sugar',cat:'Bakery & Breakfast'},
-    {text:'Weetabix',cat:'Bakery & Breakfast'},{text:'Toilet paper',cat:'Cleaning & Household'},
-    {text:'Nice Soy sauce',cat:'Condiments & Sauces'},{text:'Raisins',cat:'Snacks & Treats'},
-    {text:'Pack of Budweiser',cat:'Drinks'},{text:'Jar of Instant Coffee',cat:'Drinks'},
-    {text:'Brown sauce',cat:'Condiments & Sauces'},{text:'Chips',cat:'Frozen'},
-    {text:'Lea & Perrins Worcestershire sauce',cat:'Condiments & Sauces'},
-    {text:'Parsley',cat:'Condiments & Sauces',fav:true},{text:'Lindor chocolates',cat:'Snacks & Treats'},
-    {text:'Garlic',cat:'Condiments & Sauces'},{text:'Mustard',cat:'Condiments & Sauces'},
-    {text:'Mixed herbs',cat:'Condiments & Sauces'},{text:'Tinned hot dogs for CoCo',cat:'Tinned & Dry Goods'},
-    {text:'Monte bath soap',cat:'Health & Personal'},{text:'Granola',cat:'Bakery & Breakfast'},
-    {text:'Miele bin bags',cat:'Cleaning & Household'},{text:'Tins of spaghetti',cat:'Tinned & Dry Goods'},
-    {text:'Salt - large',cat:'Condiments & Sauces'},{text:"Monte's Milk",cat:'Dairy & Chilled'},
-    {text:'White bin bags - running gear washing!',cat:'Cleaning & Household'},
-    {text:'Eggs',cat:'Dairy & Chilled',fav:true},{text:'Paper towels',cat:'Cleaning & Household'},
-    {text:'Small tins of Beans for Monte',cat:'Tinned & Dry Goods'},{text:'Popcorn',cat:'Snacks & Treats'},
-    {text:'Actimel',cat:'Dairy & Chilled'},{text:'Pretzels',cat:'Snacks & Treats'},
-    {text:'Ice',cat:'Frozen'},{text:'Olive Oil - large',cat:'Condiments & Sauces'},
-    {text:'Yogurts',cat:'Dairy & Chilled'},{text:'Tins of beans',cat:'Tinned & Dry Goods'},
-    {text:'Bran flakes',cat:'Bakery & Breakfast'},{text:'Long spaghetti',cat:'Tinned & Dry Goods'},
-    {text:'Plastic gloves',cat:'Cleaning & Household'},{text:'Fairy liquid',cat:'Cleaning & Household',fav:true},
-    {text:'Dishwasher tablets',cat:'Cleaning & Household',fav:true},
-    {text:'Shreddies',cat:'Bakery & Breakfast'},{text:'Rice Krispies',cat:'Bakery & Breakfast'},
-    {text:'Cheerios',cat:'Bakery & Breakfast'},{text:'White wine vinegar',cat:'Condiments & Sauces'},
-    {text:'Black sacks',cat:'Cleaning & Household'},{text:'Maple syrup',cat:'Condiments & Sauces'},
-    {text:'Vinegar',cat:'Condiments & Sauces'},{text:'Salt',cat:'Condiments & Sauces'},
-    {text:'Lloyd Grossman sauce',cat:'Condiments & Sauces'},{text:'Lurpak',cat:'Dairy & Chilled'},
-    {text:'Budweisers',cat:'Drinks'},
-  ].map(it => ({...it, id: id++, fav: !!it.fav, needed: false}));
-}
-
-let state = {
-  trips: { 'My Packing List': { items: DEFAULT_PACKING_ITEMS.map((it,i)=>({id:i,text:it.text,cat:it.cat,checked:false})) } },
-  currentTrip: 'My Packing List',
-  shopping: { items: buildDefaultShopItems() }
+// ═══════════════════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════════════════
+const LIST_META = {
+  reminders:      { icon: '📋', color: '#5b9cf6', label: 'Reminders' },
+  annual:         { icon: '🔄', color: '#32d74b', label: 'Annual Renewals' },
+  houseToDo:      { icon: '🏠', color: '#ff9f0a', label: 'House To Do' },
+  houseProject:   { icon: '🔨', color: '#bf5af2', label: 'House Projects' },
+  buy:            { icon: '🛍', color: '#ff375f', label: 'Things To Buy' },
+  general:        { icon: '📝', color: '#5ac8fa', label: 'General' },
+  meds:           { icon: '💊', color: '#32d74b', label: 'Meds', ref: true },
 };
 
-// ============================================================
-// MODE SWITCH
-// ============================================================
-let currentMode = 'packing';
-function switchMode(mode) {
-  currentMode = mode;
-  document.getElementById('packingMode').classList.toggle('hidden', mode !== 'packing');
-  document.getElementById('shoppingMode').classList.toggle('hidden', mode !== 'shopping');
-  document.getElementById('tabPacking').classList.toggle('active', mode === 'packing');
-  document.getElementById('tabShopping').classList.toggle('active', mode === 'shopping');
-  if (mode==='shopping') renderShop(); else render();
-}
+const DEFAULT_DATA = {
+  reminders: {
+    reminders: [
+      { id:'r1',  title:'Sign the Will',                     date:'2026-05-10', priority:'high',   notes:'', done:false, deadline:false },
+      { id:'r2',  title:'BUPA medical for Jem',              date:'2026-05-09', priority:'high',   notes:'', done:false, deadline:false },
+      { id:'r3',  title:'Set up ADHD tests with the Clinic', date:'2026-05-10', priority:'high',   notes:'Emailed 15th March', done:false, deadline:false },
+      { id:'r4',  title:'Netflix refund',                    date:'2026-05-15', priority:'high',   notes:'Owed two payments of £18.99 taken Feb & Mar. Check for refund 15th May', done:false, deadline:false },
+      { id:'r5',  title:'Bike service',                      date:'2026-05-05', priority:'high',   notes:'Slow puncture, chain', done:false, deadline:false },
+      { id:'r6',  title:'Jem to contact HMRC Pension',       date:'2026-05-15', priority:'high',   notes:'', done:false, deadline:false },
+      { id:'r7',  title:'Bank accounts in Jem\'s name',      date:'2026-05-05', priority:'medium', notes:'', done:false, deadline:false },
+      { id:'r8',  title:'Find a Bathroom Suite',             date:'2026-05-04', priority:'high',   notes:'', done:false, deadline:false },
+      { id:'r9',  title:'Sell or Rent the Flat',             date:'2026-05-04', priority:'high',   notes:'', done:false, deadline:false },
+      { id:'r10', title:'Fix outside tap',                   date:'2026-05-05', priority:'high',   notes:'Emailed David 2nd May', done:false, deadline:false },
+      { id:'r11', title:'New kettle',                        date:'2026-05-03', priority:'high',   notes:'', done:false, deadline:false },
+      { id:'r12', title:'Roof quote',                        date:'2026-05-04', priority:'high',   notes:'Quote only valid 30 days — need to find another company urgently', done:false, deadline:true },
+      { id:'r13', title:'Hang Monte pictures in his room',   date:'2026-05-02', priority:'low',    notes:'', done:false, deadline:false },
+      { id:'r14', title:'Chase Greenwich council speed signs',date:'2026-05-28', priority:'low',   notes:'Emailed 16th Jan, 14th Feb, 28th Apr', done:false, deadline:false },
+      { id:'r15', title:'Microsoft 365 Family renewal',      date:'2026-07-02', priority:'none',   notes:'', done:false, deadline:false },
+      { id:'r16', title:'Gas Meter Reading',                 date:'2026-04-30', priority:'none',   notes:'Monthly — 28th of each month', done:false, deadline:false },
+      { id:'r17', title:'Which Will service is due to reply',date:'',           priority:'high',   notes:'Sent Will and Wishes for review 25th Aug. Takes 7-14 days', done:false, deadline:false },
+      { id:'r18', title:'Pictures in Lounge',                date:'',           priority:'medium', notes:'', done:false, deadline:false },
+    ]
+  },
+  annual: {
+    reminders: [
+      { id:'a1',  title:'Barley Land Farm annual pass',  date:'2026-04-12', priority:'none',   notes:'~£300, needs to be manually renewed', done:false, deadline:false, auto:false },
+      { id:'a2',  title:'Shooters Hill maintenance',     date:'2026-08-01', priority:'none',   notes:'Approx £2.3k', done:false, deadline:false, auto:false },
+      { id:'a3',  title:'Greenwich Council Parking Permit',date:'2026-11-16',priority:'none',  notes:'#GRRSGV9433', done:false, deadline:false, auto:false },
+      { id:'a4',  title:'Broadband with Virgin',         date:'2026-11-01', priority:'none',   notes:'Contract expires Nov (unknown day)', done:false, deadline:false, auto:false },
+      { id:'a5',  title:'Norton IT Security',            date:'2026-11-17', priority:'none',   notes:'Auto renewal', done:false, deadline:false, auto:true },
+      { id:'a6',  title:'Car Roadside Recovery',         date:'2026-11-22', priority:'none',   notes:'Currently with Land Rover', done:false, deadline:false, auto:false },
+      { id:'a7',  title:'Car Insurance',                 date:'2026-12-14', priority:'low',    notes:'Admiral, 8yr no claims, combined buildings & contents', done:false, deadline:false, auto:false },
+      { id:'a8',  title:'Swiss Vignette Express',        date:'2026-12-21', priority:'none',   notes:'Won\'t auto renew', done:false, deadline:false, auto:false },
+      { id:'a9',  title:'Apple Care - James',            date:'2027-01-01', priority:'none',   notes:'Policy # 970092525019011', done:false, deadline:false, auto:false },
+      { id:'a10', title:'Smoke Alarm Test',              date:'2027-01-13', priority:'none',   notes:'', done:false, deadline:false, auto:false },
+      { id:'a11', title:'Bearsted Flat maintenance',     date:'2027-01-16', priority:'high',   notes:'Approx £3k', done:false, deadline:false, auto:false },
+      { id:'a12', title:'Qustodio Parental Control App', date:'2027-02-13', priority:'none',   notes:'Auto renewal via Apple (£89.99)', done:false, deadline:false, auto:true },
+      { id:'a13', title:'Google AI Pro',                 date:'2027-04-19', priority:'medium', notes:'', done:false, deadline:false, auto:false },
+      { id:'a14', title:'Virgin Broadband',              date:'2027-11-17', priority:'none',   notes:'2 year deal, 1 Gig — started 17th Nov 2025', done:false, deadline:false, auto:true },
+    ]
+  },
+  houseToDo: {
+    reminders: [
+      { id:'h1',  title:'Call Verisure about new appointment', date:'2026-05-07', priority:'high',   notes:'New smoke alarm. Also asked to quote for outside cameras. At house 23rd Jan', done:false, deadline:false },
+      { id:'h2',  title:'Appoint a new Estate Agent',          date:'2026-05-05', priority:'high',   notes:'', done:false, deadline:false },
+      { id:'h3',  title:'Carpet Cleaner',                      date:'2026-05-17', priority:'medium', notes:'', done:false, deadline:false },
+      { id:'h4',  title:'Window vents solution',               date:'',           priority:'high',   notes:'Add soundproofing material', done:false, deadline:false },
+      { id:'h5',  title:'Toilet seat in en suite',             date:'',           priority:'high',   notes:'', done:false, deadline:false },
+      { id:'h6',  title:'Bike shed - Asgard',                  date:'',           priority:'medium', notes:'', done:false, deadline:false },
+      { id:'h7',  title:'Front garden',                        date:'',           priority:'medium', notes:'Add weed netting. Fantastic Gardeners to weed', done:false, deadline:false },
+      { id:'h8',  title:'Saucepans',                           date:'',           priority:'medium', notes:'', done:false, deadline:false },
+      { id:'h9',  title:'Marathon photo frame',                date:'',           priority:'medium', notes:'', done:false, deadline:false },
+      { id:'h10', title:'Clear leaves by side of house',       date:'',           priority:'medium', notes:'', done:false, deadline:false },
+      { id:'h11', title:'Clear the Cellar',                    date:'',           priority:'medium', notes:'Cardboard and black sacks', done:false, deadline:false },
+      { id:'h12', title:'Lounge doors — get lead off',         date:'',           priority:'medium', notes:'', done:false, deadline:false },
+      { id:'h13', title:'Guttering by kitchen door',           date:'',           priority:'medium', notes:'', done:false, deadline:false },
+      { id:'h14', title:'Touch up paint around electric works',date:'',           priority:'medium', notes:'', done:false, deadline:false },
+      { id:'h15', title:'Paint (touch up) around windows',     date:'',           priority:'low',    notes:'', done:false, deadline:false },
+      { id:'h16', title:'Battery light for side of house',     date:'',           priority:'low',    notes:'', done:false, deadline:false },
+      { id:'h17', title:'Bedside tables for spare room',       date:'',           priority:'low',    notes:'', done:false, deadline:false },
+      { id:'h18', title:'Irrigation system for garden',        date:'',           priority:'low',    notes:'It\'s a Claber system', done:false, deadline:false },
+      { id:'h19', title:'Glass frames for photo collage',      date:'',           priority:'low',    notes:'', done:false, deadline:false },
+      { id:'h20', title:'Walk-in wardrobe',                    date:'',           priority:'low',    notes:'Metal rail fixed to wall', done:false, deadline:false },
+      { id:'h21', title:'Gas Smart Reader',                    date:'',           priority:'low',    notes:'We have a second meter. Emailed 14th Sep 2024', done:false, deadline:false },
+      { id:'h22', title:'Paint Tins',                          date:'',           priority:'low',    notes:'Arrange for paint to be picked up', done:false, deadline:false },
+      { id:'h23', title:'Door handles',                        date:'',           priority:'low',    notes:'Replace with Puta colour', done:false, deadline:false },
+      { id:'h24', title:'Light and plug sockets',              date:'',           priority:'low',    notes:'Replace with Puta colour', done:false, deadline:false },
+      { id:'h25', title:'Boxes for kitchen cupboards',         date:'',           priority:'low',    notes:'', done:false, deadline:false },
+      { id:'h26', title:'Electronic air refreshers',           date:'',           priority:'low',    notes:'', done:false, deadline:false },
+      { id:'h27', title:'Light fittings for top floor',        date:'',           priority:'low',    notes:'', done:false, deadline:false },
+      { id:'h28', title:'Storage room',                        date:'',           priority:'low',    notes:'Bedside tables to skip?', done:false, deadline:false },
+      { id:'h29', title:'Kitchen sideboard under TV',          date:'',           priority:'low',    notes:'Add a seal between sideboard and wall', done:false, deadline:false },
+      { id:'h30', title:'Bookcase for spare room',             date:'',           priority:'low',    notes:'', done:false, deadline:false },
+    ]
+  },
+  houseProject: {
+    reminders: [
+      { id:'p1', title:'En Suite',                              date:'', priority:'high',   notes:'', done:false, deadline:false },
+      { id:'p2', title:'Utility Room',                          date:'', priority:'high',   notes:'Convert the downstairs loo. Keep toilet in the room?', done:false, deadline:false },
+      { id:'p3', title:'New Fence/Wall for side of house',      date:'', priority:'medium', notes:'Contacts: Garden-Fencing-London.com, Hortus, DJB Property', done:false, deadline:false },
+      { id:'p4', title:'Gate for the driveway',                 date:'', priority:'medium', notes:'Try LSA. Emailed BDL (Blackheath) 24th Jan', done:false, deadline:false },
+      { id:'p5', title:'Blinds for curved stairwell and downstairs toilet', date:'', priority:'medium', notes:'', done:false, deadline:false },
+      { id:'p6', title:'New Front Door',                        date:'', priority:'low',    notes:'Try London Door Company', done:false, deadline:false },
+      { id:'p7', title:'Update built-in wardrobe for Gracie',   date:'', priority:'low',    notes:'', done:false, deadline:false },
+      { id:'p8', title:'Decorate top floor',                    date:'', priority:'low',    notes:'Get DJB Property: paint, replace radiators, light shades', done:false, deadline:false },
+    ]
+  },
+  buy: {
+    reminders: [
+      { id:'b1', title:'Coffee steamer',        date:'', priority:'medium', notes:'', done:false, deadline:false },
+      { id:'b2', title:'Roof rack bars for Range Rover', date:'', priority:'low', notes:'', done:false, deadline:false },
+      { id:'b3', title:"Gracie's flute",        date:'', priority:'medium', notes:'Jemma emailed them 3rd Jan', done:false, deadline:false },
+      { id:'b4', title:'New mugs',              date:'', priority:'low',    notes:'', done:false, deadline:false },
+    ]
+  },
+  general: {
+    reminders: [
+      { id:'g1', title:'Re-assemble the pull up bars', date:'', priority:'low',    notes:'Measure the bars', done:false, deadline:false },
+      { id:'g2', title:'Convert mini DVDs to digital', date:'', priority:'low',    notes:'', done:false, deadline:false },
+      { id:'g3', title:'Sky — new deals?',             date:'', priority:'medium', notes:'', done:false, deadline:false },
+    ]
+  },
+  meds: {
+    reminders: [
+      { id:'m1', title:'Eye infection / conjunctivitis', notes:'"Infected eyes" by Boots (contains Chloramphenicol)', done:false },
+      { id:'m2', title:'Stye on the eye',               notes:"Optrex Conjunctivitis 1% w/w eye ointment (contains Chloramphenicol)", done:false },
+      { id:'m3', title:'Ear infection',                  notes:'Ear Calm', done:false },
+      { id:'m4', title:'Fungal infection (feet)',         notes:'Daktarin', done:false },
+      { id:'m5', title:'Skin inflammation',              notes:'Betnovate RD cream', done:false },
+      { id:'m6', title:'Moisturiser',                    notes:'Zerobase — Emollient Cream', done:false },
+    ]
+  }
+};
 
-// ============================================================
-// PACKING
-// ============================================================
+const PACK_DEFAULT = {
+  trips: ['Disney World','Summer Holiday','Weekend Away','Ski Trip'],
+  items: [
+    {id:'pk1',cat:'Documents',label:'Passports',checked:false},
+    {id:'pk2',cat:'Documents',label:'Travel insurance',checked:false},
+    {id:'pk3',cat:'Documents',label:'ESTA / visas',checked:false},
+    {id:'pk4',cat:'Documents',label:'Booking confirmations',checked:false},
+    {id:'pk5',cat:'Documents',label:'Travel money / cards',checked:false},
+    {id:'pk6',cat:'Clothing',label:'T-shirts',checked:false},
+    {id:'pk7',cat:'Clothing',label:'Shorts',checked:false},
+    {id:'pk8',cat:'Clothing',label:'Swimwear',checked:false},
+    {id:'pk9',cat:'Clothing',label:'Evening wear',checked:false},
+    {id:'pk10',cat:'Clothing',label:'Comfortable shoes',checked:false},
+    {id:'pk11',cat:'Clothing',label:'Trainers',checked:false},
+    {id:'pk12',cat:'Toiletries',label:'Sun cream',checked:false},
+    {id:'pk13',cat:'Toiletries',label:'Shampoo & conditioner',checked:false},
+    {id:'pk14',cat:'Toiletries',label:'Toothbrushes & toothpaste',checked:false},
+    {id:'pk15',cat:'Toiletries',label:'Deodorant',checked:false},
+    {id:'pk16',cat:'Kids',label:'Reins / harness',checked:false},
+    {id:'pk17',cat:'Kids',label:'Kids sun cream',checked:false},
+    {id:'pk18',cat:'Kids',label:'Nappies / pull-ups',checked:false},
+    {id:'pk19',cat:'Kids',label:'Favourite toys',checked:false},
+    {id:'pk20',cat:'Kids',label:'Snacks for journey',checked:false},
+    {id:'pk21',cat:'Electronics',label:'Phone chargers',checked:false},
+    {id:'pk22',cat:'Electronics',label:'Portable battery pack',checked:false},
+    {id:'pk23',cat:'Electronics',label:'Headphones',checked:false},
+    {id:'pk24',cat:'Electronics',label:'Camera',checked:false},
+    {id:'pk25',cat:'Health',label:'Ear Calm',checked:false},
+    {id:'pk26',cat:'Health',label:'Antihistamines',checked:false},
+    {id:'pk27',cat:'Health',label:'Ibuprofen & paracetamol',checked:false},
+    {id:'pk28',cat:'Health',label:'Plasters',checked:false},
+  ]
+};
+
+const SHOP_DEFAULT = {
+  items: [
+    {id:'s1',text:'Tea bags',cat:'Favourites',fav:true,needed:true},
+    {id:'s2',text:'Parsley',cat:'Favourites',fav:true,needed:false},
+    {id:'s3',text:'Ketchup',cat:'Favourites',fav:true,needed:false},
+    {id:'s4',text:'Milk',cat:'Favourites',fav:true,needed:false},
+    {id:'s5',text:'Eggs',cat:'Favourites',fav:true,needed:false},
+    {id:'s6',text:'Bread',cat:'Bakery',fav:false,needed:false},
+    {id:'s7',text:'Butter',cat:'Dairy',fav:false,needed:false},
+    {id:'s8',text:'Yoghurt',cat:'Dairy',fav:false,needed:false},
+    {id:'s9',text:'Chicken',cat:'Meat',fav:false,needed:false},
+    {id:'s10',text:'Washing up liquid',cat:'Cleaning',fav:false,needed:false},
+  ]
+};
+
+// ═══════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════
+let state = { remData: {}, packData: {}, shopData: {} };
+let currentMode = 'reminders';
+let remView = 'lists';
+let currentList = null;
+let editingItemList = null;
+let editingItemId = null;
 let packFilter = 'all';
+let shopFilter = 'all';
+let addFavToggle = false;
 
-function populateTripSelect() {
-  const sel = document.getElementById('tripSelect');
-  sel.innerHTML = '';
-  Object.keys(state.trips).forEach(name => {
-    const opt = document.createElement('option');
-    opt.value = name; opt.text = name;
-    if (name === state.currentTrip) opt.selected = true;
-    sel.appendChild(opt);
+function load() {
+  try {
+    const r = localStorage.getItem('fl_rem'); state.remData = r ? JSON.parse(r) : JSON.parse(JSON.stringify(DEFAULT_DATA));
+    const p = localStorage.getItem('fl_pack'); state.packData = p ? JSON.parse(p) : JSON.parse(JSON.stringify(PACK_DEFAULT));
+    const s = localStorage.getItem('fl_shop'); state.shopData = s ? JSON.parse(s) : JSON.parse(JSON.stringify(SHOP_DEFAULT));
+  } catch(e) {
+    state.remData = JSON.parse(JSON.stringify(DEFAULT_DATA));
+    state.packData = JSON.parse(JSON.stringify(PACK_DEFAULT));
+    state.shopData = JSON.parse(JSON.stringify(SHOP_DEFAULT));
+  }
+}
+function saveRem()  { localStorage.setItem('fl_rem',  JSON.stringify(state.remData)); }
+function savePack() { localStorage.setItem('fl_pack', JSON.stringify(state.packData)); }
+function saveShop() { localStorage.setItem('fl_shop', JSON.stringify(state.shopData)); }
+
+// ═══════════════════════════════════════════════════════
+// MODE SWITCHING
+// ═══════════════════════════════════════════════════════
+function switchMode(m) {
+  currentMode = m;
+  document.querySelectorAll('.mode-tab').forEach((t,i) => {
+    t.classList.toggle('active', ['reminders','packing','shopping'][i] === m);
   });
-}
-function populateCatSelect() {
-  const sel = document.getElementById('newItemCat');
-  const cur = sel.value;
-  sel.innerHTML = PACK_CATEGORIES.map(c=>`<option value="${c}">${c}</option>`).join('');
-  if (PACK_CATEGORIES.includes(cur)) sel.value = cur;
-}
-let newCatTarget = null;
-function promptNewCategory(target) {
-  newCatTarget = target;
-  document.getElementById('newCatName').value = '';
-  document.getElementById('newCatModal').classList.remove('hidden');
-  setTimeout(()=>document.getElementById('newCatName').focus(),50);
-}
-function confirmNewCategory() {
-  const t = document.getElementById('newCatName').value.trim();
-  if (!t || PACK_CATEGORIES.includes(t)) return;
-  PACK_CATEGORIES.splice(PACK_CATEGORIES.length-1,0,t);
-  if (!state.customCategories) state.customCategories=[];
-  state.customCategories.push(t);
-  save(); closeModal('newCatModal'); populateCatSelect();
-  if (newCatTarget==='edit') populateEditCatSelect(t);
-  else document.getElementById('newItemCat').value=t;
-}
-function populateEditCatSelect(v) {
-  const s = document.getElementById('editItemCat');
-  if (!s) return;
-  s.innerHTML = PACK_CATEGORIES.map(c=>`<option value="${c}" ${c===v?'selected':''}>${c}</option>`).join('') + '<option value="__add__">+ New category…</option>';
-  s.onchange = ()=>{ if(s.value==='__add__'){s.value=v;promptNewCategory('edit');} };
-}
-function loadTrip() { state.currentTrip=document.getElementById('tripSelect').value; save(); render(); }
-function currentItems() { return state.trips[state.currentTrip]?.items||[]; }
-function setFilter(f,el) {
-  packFilter=f;
-  document.querySelectorAll('#packingMode .filter-btn').forEach(b=>b.classList.remove('active'));
-  el.classList.add('active');
-  document.body.className='filter-'+f;
-  render();
-}
-function render() {
-  populateTripSelect(); populateCatSelect();
-  const items=currentItems();
-  const active=items.filter(i=>!i.na);
-  const total=active.length, done=active.filter(i=>i.checked).length;
-  const pct=total?Math.round(done/total*100):0;
-  document.getElementById('progressLabel').textContent=`${done} of ${total} packed`;
-  document.getElementById('progressPct').textContent=`${pct}%`;
-  document.getElementById('progressFill').style.width=pct+'%';
-  const container=document.getElementById('packingList');
-  container.innerHTML='';
-  const grouped={};
-  PACK_CATEGORIES.forEach(c=>{grouped[c]=[];});
-  items.forEach(item=>{ const cat=item.cat||'Misc'; if(!grouped[cat])grouped[cat]=[]; grouped[cat].push(item); });
-  let anyVisible=false;
-  PACK_CATEGORIES.forEach(cat=>{
-    const catItems=grouped[cat];
-    if(!catItems||catItems.length===0) return;
-    const filtered=catItems.filter(item=>{
-      if(packFilter==='todo') return !item.checked&&!item.na;
-      if(packFilter==='done') return item.checked&&!item.na;
-      return true;
-    });
-    if(filtered.length===0) return;
-    anyVisible=true;
-    const section=document.createElement('div');
-    section.className='section';
-    const checkedInCat=catItems.filter(i=>i.checked).length;
-    section.innerHTML=`<div class="section-header"><span>${cat}</span><span class="section-count">${checkedInCat}/${catItems.length}</span></div>`;
-    filtered.forEach(item=>{
-      const div=document.createElement('div');
-      div.className='item'+(item.checked?' checked':'')+(item.na?' na':'');
-      div.innerHTML=`
-        <div class="checkbox"><svg width="12" height="9" viewBox="0 0 12 9" fill="none"><path d="M1 4L4.5 7.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-        <span class="item-text">${item.text}</span>
-        ${item.qty?`<span class="item-qty">${item.qty}</span>`:''}
-        ${item.na?'<span class="na-badge">N/A</span>':''}
-        <button class="item-delete" onclick="deletePackItem(${item.id},event)">×</button>`;
-      let pt=null,dl=false;
-      div.addEventListener('pointerdown',()=>{dl=false;pt=setTimeout(()=>{dl=true;openEditModal(item.id);},500);});
-      div.addEventListener('pointerup',()=>clearTimeout(pt));
-      div.addEventListener('pointercancel',()=>clearTimeout(pt));
-      div.addEventListener('click',e=>{if(dl){e.stopPropagation();return;}togglePackItem(item.id);});
-      section.appendChild(div);
-    });
-    container.appendChild(section);
-  });
-  if(!anyVisible) container.innerHTML='<div class="empty">Nothing here yet.</div>';
-}
-let editingId=null, deleteArmed=false;
-function openEditModal(id) {
-  const item=currentItems().find(i=>i.id===id); if(!item) return;
-  editingId=id;
-  document.getElementById('editItemText').value=item.text;
-  document.getElementById('editItemQty').value=item.qty||'';
-  populateEditCatSelect(item.cat);
-  document.getElementById('naToggleBtn').textContent=item.na?'Un-skip':'Skip (N/A)';
-  resetDeleteBtn();
-  document.getElementById('editModal').classList.remove('hidden');
-  setTimeout(()=>document.getElementById('editItemText').focus(),50);
-}
-function toggleNAFromModal(){toggleNA(editingId);closeModal('editModal');}
-function toggleDeleteArmed(){
-  deleteArmed=!deleteArmed;
-  const btn=document.getElementById('deleteBtn');
-  if(deleteArmed){btn.textContent='⚠ Confirm delete';btn.style.cssText='background:#c0392b;color:#fff;border-color:#c0392b';}
-  else resetDeleteBtn();
-}
-function resetDeleteBtn(){
-  deleteArmed=false;
-  const btn=document.getElementById('deleteBtn');
-  if(btn){btn.textContent='Delete';btn.style.cssText='';}
-}
-function saveEdit(){
-  if(deleteArmed){const id=editingId;closeModal('editModal');resetDeleteBtn();state.trips[state.currentTrip].items=currentItems().filter(i=>i.id!==id);save();render();return;}
-  const text=document.getElementById('editItemText').value.trim();
-  const cat=document.getElementById('editItemCat').value;
-  const qty=document.getElementById('editItemQty').value;
-  if(!text) return;
-  const item=currentItems().find(i=>i.id===editingId);
-  if(item){item.text=text;item.cat=cat;item.qty=qty?parseInt(qty):null;}
-  closeModal('editModal');save();render();
-}
-function togglePackItem(id){const item=currentItems().find(i=>i.id===id);if(item&&!item.na){item.checked=!item.checked;save();render();}}
-function toggleNA(id){const item=currentItems().find(i=>i.id===id);if(item){item.na=!item.na;if(item.na)item.checked=false;save();render();}}
-function deletePackItem(id,e){e.stopPropagation();if(!confirm('Remove this item?'))return;state.trips[state.currentTrip].items=currentItems().filter(i=>i.id!==id);save();render();}
-function addItem(){
-  const text=document.getElementById('newItemText').value.trim();
-  const cat=document.getElementById('newItemCat').value;
-  if(!text||!state.currentTrip) return;
-  const qty=document.getElementById('newItemQty').value;
-  currentItems().push({id:Date.now(),text,cat,qty:qty?parseInt(qty):null,checked:false});
-  document.getElementById('newItemText').value='';document.getElementById('newItemQty').value='';
-  save();render();
-}
-function resetChecks(){if(!confirm('Uncheck all items for a fresh trip?'))return;currentItems().forEach(i=>{i.checked=false;i.na=false;});save();render();}
-function showNewTripModal(){document.getElementById('newTripName').value='';document.getElementById('newTripModal').classList.remove('hidden');setTimeout(()=>document.getElementById('newTripName').focus(),50);}
-function createTrip(){
-  const name=document.getElementById('newTripName').value.trim();
-  if(!name)return;
-  if(state.trips[name]){alert('A trip with that name already exists.');return;}
-  state.trips[name]={items:currentItems().map(i=>({...i,id:Date.now()+Math.random(),checked:false}))};
-  state.currentTrip=name;closeModal('newTripModal');save();render();
-}
-function deleteTrip(){
-  const trips=Object.keys(state.trips);
-  if(trips.length<=1){alert("Can't delete your only trip.");return;}
-  if(!confirm(`Delete "${state.currentTrip}"?`))return;
-  delete state.trips[state.currentTrip];state.currentTrip=Object.keys(state.trips)[0];save();render();
-}
-function closeModal(id){
-  document.getElementById(id).classList.add('hidden');
-  if(id==='editModal')resetDeleteBtn();
-  if(id==='shopEditModal')resetShopDeleteBtn();
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-'+m).classList.add('active');
+  if (m==='reminders') renderRem();
+  if (m==='packing')   renderPack();
+  if (m==='shopping')  renderShop();
 }
 
-// ============================================================
-// SHOPPING
-// ============================================================
-let shopFilter='all', shopSearch='', addFavToggle=false;
-function shopItems(){return state.shopping.items;}
-function setShopFilter(f,el){
-  shopFilter=f;
-  document.querySelectorAll('#shopControls .filter-btn').forEach(b=>b.classList.remove('active','orange-active'));
-  el.classList.add(f==='needed'?'orange-active':'active');
-  renderShop();
+// ═══════════════════════════════════════════════════════
+// REMINDERS
+// ═══════════════════════════════════════════════════════
+const PRIORITY_COLOR = { high: '#ff453a', medium: '#ff9f0a', low: '#5b9cf6', none: 'transparent' };
+
+function setRemView(v) {
+  remView = v;
+  document.getElementById('vbtn-lists').classList.toggle('active', v==='lists');
+  document.getElementById('vbtn-scheduled').classList.toggle('active', v==='scheduled');
+  document.getElementById('rem-lists-view').style.display     = v==='lists' ? '' : 'none';
+  document.getElementById('rem-scheduled-view').style.display = v==='scheduled' ? '' : 'none';
+  if (v==='scheduled') renderScheduled();
 }
-function onShopSearch(){
-  shopSearch=document.getElementById('shopSearch').value.toLowerCase();
-  document.getElementById('shopSearchClear').classList.toggle('visible',shopSearch.length>0);
-  renderShop();
+
+function renderRem() {
+  renderGrid();
+  if (remView==='scheduled') renderScheduled();
 }
-function clearShopSearch(){document.getElementById('shopSearch').value='';shopSearch='';document.getElementById('shopSearchClear').classList.remove('visible');renderShop();}
-function renderShop(){
-  const items=shopItems();
-  const count=items.filter(i=>i.needed).length;
-  const countEl=document.getElementById('shopNeededCount');
-  countEl.textContent=count;
-  countEl.className='needed-count'+(count===0?' zero':'');
-  document.getElementById('shopNeededLabel').textContent=count===1?'item needed':'items needed';
-  const addSel=document.getElementById('shopNewCat');
-  const curVal=addSel.value;
-  addSel.innerHTML=SHOP_CATEGORIES.filter(c=>c!=='Favourites').map(c=>`<option value="${c}">${c}</option>`).join('');
-  if(curVal&&addSel.querySelector(`option[value="${curVal}"]`))addSel.value=curVal;
-  const container=document.getElementById('shopList');
-  container.innerHTML='';
-  const grouped={};
-  SHOP_CATEGORIES.forEach(c=>grouped[c]=[]);
-  items.forEach(item=>{
-    const ms=!shopSearch||item.text.toLowerCase().includes(shopSearch);
-    const mf=shopFilter==='all'||(shopFilter==='needed'&&item.needed);
-    if(!ms||!mf) return;
-    if(item.fav)grouped['Favourites'].push(item);
-    else{if(!grouped[item.cat])grouped[item.cat]=[];grouped[item.cat].push(item);}
+
+function renderGrid() {
+  const grid = document.getElementById('rem-grid');
+  grid.innerHTML = '';
+  Object.entries(LIST_META).forEach(([key, meta]) => {
+    const items = state.remData[key]?.reminders || [];
+    const incomplete = items.filter(i => !i.done).length;
+    const card = document.createElement('div');
+    card.className = 'rem-list-card' + (meta.ref ? ' ref' : '');
+    card.style.setProperty('--card-color', meta.color);
+    card.innerHTML = `
+      <div style="position:absolute;top:0;left:0;right:0;height:3px;background:${meta.color};border-radius:14px 14px 0 0"></div>
+      <div class="rem-list-icon">${meta.icon}</div>
+      <div class="rem-list-name">${meta.label}</div>
+      <div class="rem-list-count" style="color:${meta.color}">${incomplete}</div>
+    `;
+    card.onclick = () => openDetail(key);
+    grid.appendChild(card);
   });
-  let anyVisible=false;
-  SHOP_CATEGORIES.forEach(cat=>{
-    const catItems=grouped[cat];
-    if(!catItems||catItems.length===0) return;
-    anyVisible=true;
-    const section=document.createElement('div');
-    section.className='section';
-    const neededInCat=catItems.filter(i=>i.needed).length;
-    const isFav=cat==='Favourites';
-    section.innerHTML=`<div class="section-header">
-      <span>${isFav?'<span class="fav-star">⭐</span>':''} ${cat}</span>
-      ${neededInCat>0?`<span class="section-count" style="background:var(--orange-soft);color:var(--orange);border:1px solid rgba(240,160,48,0.3)">${neededInCat} needed</span>`:'<span class="section-count">✓ stocked</span>'}
+}
+
+function renderScheduled() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const todayStr = today.toISOString().slice(0,10);
+  const in7 = new Date(today); in7.setDate(in7.getDate()+7);
+  const in30 = new Date(today); in30.setDate(in30.getDate()+30);
+
+  // Gather all dated incomplete items
+  let all = [];
+  Object.entries(state.remData).forEach(([listKey, listData]) => {
+    if (listKey === 'meds') return;
+    (listData.reminders || []).forEach(item => {
+      if (!item.done && item.date) all.push({ ...item, listKey });
+    });
+  });
+  all.sort((a,b) => a.date.localeCompare(b.date));
+
+  const groups = { overdue:[], today:[], week:[], month:[], later:[] };
+  all.forEach(item => {
+    const d = item.date;
+    if (d < todayStr) groups.overdue.push(item);
+    else if (d === todayStr) groups.today.push(item);
+    else if (new Date(d) <= in7) groups.week.push(item);
+    else if (new Date(d) <= in30) groups.month.push(item);
+    else groups.later.push(item);
+  });
+
+  const labels = { overdue:'⚠ Overdue', today:'Today', week:'This Week', month:'This Month', later:'Later' };
+  const el = document.getElementById('rem-scheduled-content');
+  el.innerHTML = '';
+  Object.entries(groups).forEach(([g, items]) => {
+    if (!items.length) return;
+    el.innerHTML += `<div class="rem-group-header">${labels[g]}</div>`;
+    items.forEach(item => el.innerHTML += scheduledItemHTML(item, g));
+  });
+  if (!all.length) el.innerHTML = '<p style="color:var(--text-muted);padding:24px 0;text-align:center">No scheduled reminders</p>';
+}
+
+function scheduledItemHTML(item, group) {
+  const meta = LIST_META[item.listKey];
+  const isOverdue = group==='overdue';
+  const isSoon = group==='today' || group==='week';
+  const dateLabel = formatDate(item.date);
+  const priorityCol = PRIORITY_COLOR[item.priority||'none'];
+  const deadlineBadge = item.deadline ? `<span class="deadline-badge">⏰ Deadline</span>` : '';
+  return `
+    <div class="rem-item ${isOverdue?'overdue':''} ${item.deadline&&!item.done?'urgent':''}" onclick="openItemModal('${item.listKey}','${item.id}')">
+      <div class="rem-circle ${item.done?'done':''}" onclick="event.stopPropagation();toggleDone('${item.listKey}','${item.id}')"></div>
+      <div class="rem-item-body">
+        <div class="rem-item-title ${item.done?'done':''}">${item.title}</div>
+        <div class="rem-item-meta">
+          <span class="rem-item-date ${isOverdue?'overdue':isSoon?'soon':''}">${dateLabel}</span>
+          <span class="rem-item-list-tag" style="background:${meta.color}22;color:${meta.color}">${meta.label}</span>
+          ${deadlineBadge}
+        </div>
+        ${item.notes ? `<div class="rem-item-note">${item.notes}</div>` : ''}
+      </div>
+      <div class="rem-priority-dot" style="background:${priorityCol}"></div>
     </div>`;
-    catItems.forEach(item=>{
-      const div=document.createElement('div');
-      div.className='item '+(item.needed?'needed':'instock');
-      div.innerHTML=`
-        <div class="shop-check"><svg width="12" height="9" viewBox="0 0 12 9" fill="none"><path d="M1 4L4.5 7.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-        <span class="item-text">${item.text}</span>
-        ${item.fav?'<span class="fav-badge">⭐</span>':''}
-        ${item.needed?'<span class="needed-pill">NEEDED</span>':''}
-        <button class="item-delete" onclick="deleteShopItem(${item.id},event)">×</button>`;
-      let pt=null,dl=false;
-      div.addEventListener('pointerdown',()=>{dl=false;pt=setTimeout(()=>{dl=true;openShopEditModal(item.id);},500);});
-      div.addEventListener('pointerup',()=>clearTimeout(pt));
-      div.addEventListener('pointercancel',()=>clearTimeout(pt));
-      div.addEventListener('click',e=>{if(dl){e.stopPropagation();return;}toggleShopItem(item.id);});
-      section.appendChild(div);
-    });
-    container.appendChild(section);
-  });
-  if(!anyVisible){
-    if(shopFilter==='needed') container.innerHTML='<div class="empty">🎉 Nothing needed right now!</div>';
-    else if(shopSearch) container.innerHTML='<div class="empty">No items match your search.</div>';
-    else container.innerHTML='<div class="empty">No items yet.</div>';
-  }
-}
-function toggleShopItem(id){const item=shopItems().find(i=>i.id===id);if(item){item.needed=!item.needed;save();renderShop();}}
-function deleteShopItem(id,e){e.stopPropagation();if(!confirm('Remove this item?'))return;state.shopping.items=shopItems().filter(i=>i.id!==id);save();renderShop();}
-let shopEditingId=null, shopDeleteArmed=false;
-function openShopEditModal(id){
-  const item=shopItems().find(i=>i.id===id);if(!item)return;
-  shopEditingId=id;
-  document.getElementById('shopEditText').value=item.text;
-  const catSel=document.getElementById('shopEditCat');
-  catSel.innerHTML=SHOP_CATEGORIES.filter(c=>c!=='Favourites').map(c=>`<option value="${c}" ${c===item.cat?'selected':''}>${c}</option>`).join('');
-  const favBtn=document.getElementById('shopFavToggleBtn');
-  favBtn.textContent=item.fav?'⭐ Remove from favourites':'⭐ Make favourite';
-  favBtn.style.cssText=item.fav?'background:var(--orange-soft);border-color:var(--orange);color:var(--orange)':'';
-  resetShopDeleteBtn();
-  document.getElementById('shopEditModal').classList.remove('hidden');
-  setTimeout(()=>document.getElementById('shopEditText').focus(),50);
-}
-function toggleShopFavFromModal(){
-  const item=shopItems().find(i=>i.id===shopEditingId);
-  if(item){
-    item.fav=!item.fav;
-    const favBtn=document.getElementById('shopFavToggleBtn');
-    favBtn.textContent=item.fav?'⭐ Remove from favourites':'⭐ Make favourite';
-    favBtn.style.cssText=item.fav?'background:var(--orange-soft);border-color:var(--orange);color:var(--orange)':'';
-  }
-}
-function toggleShopDeleteArmed(){
-  shopDeleteArmed=!shopDeleteArmed;
-  const btn=document.getElementById('shopDeleteBtn');
-  if(shopDeleteArmed){btn.textContent='⚠ Confirm delete';btn.style.cssText='background:#c0392b;color:#fff;border-color:#c0392b';}
-  else resetShopDeleteBtn();
-}
-function resetShopDeleteBtn(){shopDeleteArmed=false;const btn=document.getElementById('shopDeleteBtn');if(btn){btn.textContent='Delete';btn.style.cssText='';}}
-function saveShopEdit(){
-  if(shopDeleteArmed){const id=shopEditingId;closeModal('shopEditModal');resetShopDeleteBtn();state.shopping.items=shopItems().filter(i=>i.id!==id);save();renderShop();return;}
-  const text=document.getElementById('shopEditText').value.trim();
-  const cat=document.getElementById('shopEditCat').value;
-  if(!text)return;
-  const item=shopItems().find(i=>i.id===shopEditingId);
-  if(item){item.text=text;item.cat=cat;}
-  closeModal('shopEditModal');save();renderShop();
-}
-function toggleAddFav(){
-  addFavToggle=!addFavToggle;
-  const btn=document.getElementById('shopFavBtn');
-  btn.classList.toggle('on',addFavToggle);
-}
-function addShopItem(){
-  const text=document.getElementById('shopNewText').value.trim();
-  const cat=document.getElementById('shopNewCat').value;
-  if(!text)return;
-  state.shopping.items.push({id:Date.now(),text,cat,fav:addFavToggle,needed:true});
-  document.getElementById('shopNewText').value='';
-  addFavToggle=false;document.getElementById('shopFavBtn').classList.remove('on');
-  save();renderShop();
 }
 
-// ============================================================
+function openDetail(listKey) {
+  currentList = listKey;
+  document.getElementById('rem-home-view').style.display = 'none';
+  document.getElementById('rem-detail-view').style.display = 'block';
+  renderDetail();
+}
+
+function closeDetail() {
+  currentList = null;
+  document.getElementById('rem-home-view').style.display = '';
+  document.getElementById('rem-detail-view').style.display = 'none';
+  renderGrid();
+}
+
+function renderDetail() {
+  const meta = LIST_META[currentList];
+  const items = state.remData[currentList]?.reminders || [];
+  document.getElementById('detail-icon').textContent = meta.icon;
+  document.getElementById('detail-title').textContent = meta.label;
+  const incomplete = items.filter(i=>!i.done).length;
+  document.getElementById('detail-count').textContent = `${incomplete} remaining`;
+
+  const isRef = meta.ref;
+  document.getElementById('detail-add-row').style.display = isRef ? 'none' : '';
+  const isAnnual = currentList === 'annual';
+
+  const el = document.getElementById('detail-items');
+  el.innerHTML = '';
+
+  if (isRef) {
+    // Meds — reference style
+    items.forEach(item => {
+      el.innerHTML += `
+        <div class="rem-detail-item ref-item">
+          <div class="rem-detail-item-body">
+            <div class="rem-detail-title-text">${item.title}</div>
+            ${item.notes ? `<div class="rem-detail-note">${item.notes}</div>` : ''}
+          </div>
+        </div>`;
+    });
+    return;
+  }
+
+  if (isAnnual) {
+    // Sort by date
+    const sorted = [...items].sort((a,b) => (a.date||'9999').localeCompare(b.date||'9999'));
+    sorted.forEach(item => {
+      const d = item.date ? new Date(item.date) : null;
+      const mon = d ? d.toLocaleString('en-GB',{month:'short'}).toUpperCase() : '—';
+      const day = d ? d.getDate() : '—';
+      const autoBadge = item.auto ? '<span class="renewal-auto">AUTO</span>' : '<span class="renewal-manual">MANUAL</span>';
+      el.innerHTML += `
+        <div class="renewal-item ${item.done?'':''}  " onclick="openItemModal('${currentList}','${item.id}')">
+          <div style="display:flex;align-items:flex-start;gap:12px;flex:1">
+            <div class="rem-circle ${item.done?'done':''}" onclick="event.stopPropagation();toggleDone('${currentList}','${item.id}')"></div>
+            <div class="renewal-month-badge" style="${item.done?'opacity:0.4':''}">
+              <div class="renewal-month">${mon}</div>
+              <div class="renewal-day">${day}</div>
+            </div>
+            <div class="renewal-body" style="${item.done?'opacity:0.4':''}">
+              <div class="renewal-name ${item.done?'done':''}" style="${item.done?'text-decoration:line-through;color:var(--text-muted)':''}">${item.title}</div>
+              ${item.notes ? `<div class="renewal-note">${item.notes}</div>` : ''}
+              ${autoBadge}
+            </div>
+          </div>
+        </div>`;
+    });
+    return;
+  }
+
+  // Standard list — high priority first, then by date, then undated
+  const sorted = [...items].sort((a,b) => {
+    const pOrd = {high:0,medium:1,low:2,none:3};
+    if (!a.done && b.done) return -1;
+    if (a.done && !b.done) return 1;
+    const pa = pOrd[a.priority||'none'], pb = pOrd[b.priority||'none'];
+    if (pa !== pb) return pa - pb;
+    if (a.date && b.date) return a.date.localeCompare(b.date);
+    if (a.date) return -1; if (b.date) return 1;
+    return 0;
+  });
+
+  sorted.forEach(item => {
+    const priorityCol = PRIORITY_COLOR[item.priority||'none'];
+    const deadlineBadge = item.deadline ? `<span class="deadline-badge" style="font-size:10px">⏰ Deadline</span>` : '';
+    el.innerHTML += `
+      <div class="rem-detail-item" onclick="openItemModal('${currentList}','${item.id}')">
+        <div class="rem-circle ${item.done?'done':''}" onclick="event.stopPropagation();toggleDone('${currentList}','${item.id}')"></div>
+        <div class="rem-priority-dot" style="background:${priorityCol};margin-top:6px"></div>
+        <div class="rem-detail-item-body">
+          <div class="rem-detail-title-text ${item.done?'done':''}">${item.title}</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:3px">
+            ${item.date ? `<span class="rem-detail-date" style="font-size:12px;color:var(--text-muted)">${formatDate(item.date)}</span>` : ''}
+            ${deadlineBadge}
+          </div>
+          ${item.notes ? `<div class="rem-detail-note">${item.notes}</div>` : ''}
+        </div>
+      </div>`;
+  });
+}
+
+function toggleDone(listKey, id) {
+  const item = state.remData[listKey].reminders.find(i=>i.id===id);
+  if (item) { item.done = !item.done; saveRem(); }
+  if (currentList) renderDetail();
+  else { renderGrid(); if(remView==='scheduled') renderScheduled(); }
+}
+
+function addToCurrentList() {
+  const val = document.getElementById('detail-add-input').value.trim();
+  if (!val || !currentList) return;
+  const id = 'u' + Date.now();
+  state.remData[currentList].reminders.push({ id, title:val, date:'', priority:'none', notes:'', done:false, deadline:false });
+  document.getElementById('detail-add-input').value = '';
+  saveRem(); renderDetail();
+}
+
+// Add modal
+function openAddModal() {
+  const sel = document.getElementById('addList');
+  sel.innerHTML = Object.entries(LIST_META).filter(([k,m])=>!m.ref).map(([k,m])=>`<option value="${k}">${m.label}</option>`).join('');
+  document.getElementById('addTitle').value = '';
+  document.getElementById('addDate').value = '';
+  document.getElementById('addNotes').value = '';
+  document.getElementById('addPriority').value = 'none';
+  document.getElementById('addDeadline').checked = false;
+  document.getElementById('addModal').classList.add('open');
+  setTimeout(()=>document.getElementById('addTitle').focus(), 100);
+}
+function closeAddModal() { document.getElementById('addModal').classList.remove('open'); }
+function saveNewReminder() {
+  const title = document.getElementById('addTitle').value.trim();
+  if (!title) return;
+  const listKey = document.getElementById('addList').value;
+  const id = 'u' + Date.now();
+  state.remData[listKey].reminders.push({
+    id, title,
+    date: document.getElementById('addDate').value,
+    priority: document.getElementById('addPriority').value,
+    notes: document.getElementById('addNotes').value,
+    done: false,
+    deadline: document.getElementById('addDeadline').checked,
+  });
+  saveRem(); closeAddModal(); renderRem();
+  if (currentList && currentList !== listKey) {} else if (currentList) renderDetail();
+}
+
+// Item edit modal
+function openItemModal(listKey, id) {
+  editingItemList = listKey; editingItemId = id;
+  const item = state.remData[listKey].reminders.find(i=>i.id===id);
+  if (!item) return;
+  const meta = LIST_META[listKey];
+  document.getElementById('itemModalTitle').textContent = meta.label;
+  document.getElementById('itemEditTitle').value = item.title;
+  document.getElementById('itemEditDate').value = item.date||'';
+  document.getElementById('itemEditNotes').value = item.notes||'';
+  document.getElementById('itemEditPriority').value = item.priority||'none';
+  document.getElementById('itemEditDeadline').checked = !!item.deadline;
+  document.getElementById('itemDeadlineField').style.display = meta.ref ? 'none' : '';
+  document.getElementById('itemModal').classList.add('open');
+}
+function closeItemModal() { document.getElementById('itemModal').classList.remove('open'); }
+function saveItemEdit() {
+  const item = state.remData[editingItemList].reminders.find(i=>i.id===editingItemId);
+  if (!item) return;
+  item.title    = document.getElementById('itemEditTitle').value.trim() || item.title;
+  item.date     = document.getElementById('itemEditDate').value;
+  item.notes    = document.getElementById('itemEditNotes').value;
+  item.priority = document.getElementById('itemEditPriority').value;
+  item.deadline = document.getElementById('itemEditDeadline').checked;
+  saveRem(); closeItemModal();
+  if (currentList) renderDetail(); else { renderGrid(); if(remView==='scheduled') renderScheduled(); }
+}
+function deleteCurrentItem() {
+  if (!confirm('Delete this reminder?')) return;
+  const list = state.remData[editingItemList].reminders;
+  state.remData[editingItemList].reminders = list.filter(i=>i.id!==editingItemId);
+  saveRem(); closeItemModal();
+  if (currentList) renderDetail(); else { renderGrid(); if(remView==='scheduled') renderScheduled(); }
+}
+
+function formatDate(str) {
+  if (!str) return '';
+  const d = new Date(str + 'T12:00:00');
+  return d.toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
+}
+
+// ═══════════════════════════════════════════════════════
+// PACKING
+// ═══════════════════════════════════════════════════════
+function setPackFilter(f) {
+  packFilter = f;
+  ['all','todo','done'].forEach(x => document.getElementById('pf-'+x).classList.toggle('active', x===f));
+  renderPack();
+}
+
+function renderPack() {
+  const items = state.packData.items || [];
+  const cats = [...new Set(items.map(i=>i.cat))];
+  const total = items.length, done = items.filter(i=>i.checked).length;
+  document.getElementById('pack-progress').style.width = total ? (done/total*100)+'%' : '0%';
+  const body = document.getElementById('pack-body');
+  body.innerHTML = '';
+  cats.forEach(cat => {
+    let catItems = items.filter(i=>i.cat===cat);
+    if (packFilter==='todo') catItems = catItems.filter(i=>!i.checked);
+    if (packFilter==='done') catItems = catItems.filter(i=>i.checked);
+    if (!catItems.length) return;
+    let html = `<div class="pack-section"><div class="section-header"><span class="section-title">${cat}</span></div>`;
+    catItems.forEach(item => {
+      html += `<div class="pack-item ${item.checked?'checked':''}" onclick="togglePack('${item.id}')">
+        <div class="pack-check"></div>
+        <span class="pack-label">${item.label}</span>
+      </div>`;
+    });
+    html += '</div>';
+    body.innerHTML += html;
+  });
+}
+
+function togglePack(id) {
+  const item = state.packData.items.find(i=>i.id===id);
+  if (item) { item.checked = !item.checked; savePack(); renderPack(); }
+}
+
+function addPackItem() {
+  const text = document.getElementById('packNewText').value.trim();
+  const cat  = document.getElementById('packCatAdd').value;
+  if (!text) return;
+  state.packData.items.push({ id:'pk'+Date.now(), cat, label:text, checked:false });
+  document.getElementById('packNewText').value = '';
+  savePack(); renderPack();
+}
+
+function resetPack() {
+  if (!confirm('Reset all packing items?')) return;
+  state.packData.items.forEach(i=>i.checked=false);
+  savePack(); renderPack();
+}
+
+// ═══════════════════════════════════════════════════════
+// SHOPPING
+// ═══════════════════════════════════════════════════════
+function setShopFilter(f) {
+  shopFilter = f;
+  ['all','needed'].forEach(x => document.getElementById('sf-'+x).classList.toggle('active', x===f));
+  renderShop();
+}
+
+function renderShop() {
+  const items = state.shopData.items || [];
+  const cats = ['Favourites',...[...new Set(items.filter(i=>!i.fav).map(i=>i.cat))]];
+  const body = document.getElementById('shop-body');
+  body.innerHTML = '';
+  cats.forEach(cat => {
+    let catItems = items.filter(i => cat==='Favourites' ? i.fav : (!i.fav && i.cat===cat));
+    if (shopFilter==='needed') catItems = catItems.filter(i=>i.needed);
+    if (!catItems.length) return;
+    let html = `<div class="shop-section"><div class="section-header"><span class="section-title">${cat}</span></div>`;
+    catItems.forEach(item => {
+      html += `<div class="shop-item ${item.needed?'needed':'in-stock'}" onclick="toggleShop('${item.id}')">
+        <div class="shop-check"></div>
+        <span class="shop-label">${item.text}</span>
+        ${item.fav ? '<span class="fav-star">⭐</span>' : ''}
+      </div>`;
+    });
+    html += '</div>';
+    body.innerHTML += html;
+  });
+}
+
+function toggleShop(id) {
+  const item = state.shopData.items.find(i=>i.id===id);
+  if (item) { item.needed = !item.needed; saveShop(); renderShop(); }
+}
+
+function addShopItem() {
+  const text = document.getElementById('shopNewText').value.trim();
+  const cat  = document.getElementById('shopNewCat').value;
+  if (!text) return;
+  state.shopData.items.push({ id:'s'+Date.now(), text, cat, fav:addFavToggle, needed:true });
+  document.getElementById('shopNewText').value = '';
+  addFavToggle = false;
+  document.getElementById('shopFavBtn').classList.remove('on');
+  saveShop(); renderShop();
+}
+
+function toggleAddFav() {
+  addFavToggle = !addFavToggle;
+  document.getElementById('shopFavBtn').classList.toggle('on', addFavToggle);
+}
+
+function resetShop() {
+  state.shopData.items.forEach(i => i.needed = false);
+  saveShop(); renderShop();
+}
+
+// ═══════════════════════════════════════════════════════
 // INIT
-// ============================================================
-document.body.className='filter-'+packFilter;
-render();
+// ═══════════════════════════════════════════════════════
+load();
+renderRem();
+renderPack();
 renderShop();
+
+// Close modals on background click
+document.querySelectorAll('.modal-bg').forEach(bg => {
+  bg.addEventListener('click', e => { if (e.target === bg) bg.classList.remove('open'); });
+});
 </script>
 </body>
 </html>
