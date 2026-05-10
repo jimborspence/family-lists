@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Family Lists</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client"></script>
 <style>
 :root {
   --bg: #0a0a0f;
@@ -246,9 +247,36 @@ select { background: var(--surface2); border: 1px solid var(--border); color: va
 .shop-add-row input:focus { outline: none; border-color: var(--accent); }
 .fav-btn-toggle { padding: 10px 13px; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; cursor: pointer; font-size: 16px; transition: all 0.15s; }
 .fav-btn-toggle.on { background: var(--orange-soft); border-color: var(--orange); }
+
+/* ── SYNC BAR ── */
+.sync-bar {
+  background: var(--surface2); border-bottom: 1px solid var(--border);
+  padding: 5px 16px; display: flex; align-items: center; justify-content: space-between;
+  font-size: 11px; color: var(--text-muted); min-height: 28px;
+}
+.sync-dot { width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; display: inline-block; flex-shrink: 0; }
+.sync-dot.green  { background: var(--green); }
+.sync-dot.orange { background: var(--orange); animation: sdpulse 1.2s infinite; }
+.sync-dot.red    { background: var(--red); }
+.sync-dot.grey   { background: #555; }
+@keyframes sdpulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+.sync-left { display: flex; align-items: center; }
+.sync-signin-btn {
+  background: var(--accent); color: #fff; border: none; padding: 3px 10px;
+  border-radius: 6px; font-family: inherit; font-size: 11px; cursor: pointer; font-weight: 500;
+}
 </style>
 </head>
 <body>
+
+<!-- SYNC BAR -->
+<div class="sync-bar" id="syncBar">
+  <div class="sync-left">
+    <span class="sync-dot grey" id="syncDot"></span>
+    <span id="syncMsg">Not signed in</span>
+  </div>
+  <button class="sync-signin-btn" id="signinBtn" onclick="handleSignIn()">Sign in with Google</button>
+</div>
 
 <!-- MODE BAR -->
 <div class="mode-bar">
@@ -271,6 +299,7 @@ select { background: var(--surface2); border: 1px solid var(--border); color: va
       </div>
       <div class="rem-view-toggle">
         <div class="rem-view-btn active" id="vbtn-lists" onclick="setRemView('lists')">My Lists</div>
+        <div class="rem-view-btn" id="vbtn-due" onclick="setRemView('due')">Due Now</div>
         <div class="rem-view-btn" id="vbtn-scheduled" onclick="setRemView('scheduled')">Scheduled</div>
       </div>
     </div>
@@ -278,6 +307,11 @@ select { background: var(--surface2); border: 1px solid var(--border); color: va
     <!-- Lists grid -->
     <div id="rem-lists-view">
       <div class="rem-home rem-home-grid" id="rem-grid"></div>
+    </div>
+
+    <!-- Due Now view (overdue + today across all lists) -->
+    <div id="rem-due-view" style="display:none">
+      <div class="rem-scheduled" id="rem-due-content"></div>
     </div>
 
     <!-- Scheduled view -->
@@ -436,6 +470,10 @@ select { background: var(--surface2); border: 1px solid var(--border); color: va
         <option value="medium">Medium</option><option value="high">High</option>
       </select>
     </div>
+    <div class="modal-field" id="itemCategoryField">
+      <label>Category</label>
+      <select id="itemEditCategory"></select>
+    </div>
     <div class="modal-field" id="itemDeadlineField">
       <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
         <input type="checkbox" id="itemEditDeadline" style="width:auto"> Hard deadline
@@ -455,6 +493,7 @@ select { background: var(--surface2); border: 1px solid var(--border); color: va
 // ═══════════════════════════════════════════════════════
 const LIST_META = {
   reminders:      { icon: '📋', color: '#5b9cf6', label: 'Reminders' },
+  family:         { icon: '👨‍👩‍👧‍👦', color: '#ff6b9d', label: 'Family' },
   annual:         { icon: '🔄', color: '#32d74b', label: 'Annual Renewals' },
   houseToDo:      { icon: '🏠', color: '#ff9f0a', label: 'House To Do' },
   houseProject:   { icon: '🔨', color: '#bf5af2', label: 'House Projects' },
@@ -465,25 +504,16 @@ const LIST_META = {
 
 const DEFAULT_DATA = {
   reminders: {
+    reminders: []
+  },
+  family: {
     reminders: [
       { id:'r1',  title:'Sign the Will',                     date:'2026-05-10', priority:'high',   notes:'', done:false, deadline:false },
       { id:'r2',  title:'BUPA medical for Jem',              date:'2026-05-09', priority:'high',   notes:'', done:false, deadline:false },
       { id:'r3',  title:'Set up ADHD tests with the Clinic', date:'2026-05-10', priority:'high',   notes:'Emailed 15th March', done:false, deadline:false },
-      { id:'r4',  title:'Netflix refund',                    date:'2026-05-15', priority:'high',   notes:'Owed two payments of £18.99 taken Feb & Mar. Check for refund 15th May', done:false, deadline:false },
-      { id:'r5',  title:'Bike service',                      date:'2026-05-05', priority:'high',   notes:'Slow puncture, chain', done:false, deadline:false },
       { id:'r6',  title:'Jem to contact HMRC Pension',       date:'2026-05-15', priority:'high',   notes:'', done:false, deadline:false },
-      { id:'r7',  title:'Bank accounts in Jem\'s name',      date:'2026-05-05', priority:'medium', notes:'', done:false, deadline:false },
-      { id:'r8',  title:'Find a Bathroom Suite',             date:'2026-05-04', priority:'high',   notes:'', done:false, deadline:false },
-      { id:'r9',  title:'Sell or Rent the Flat',             date:'2026-05-04', priority:'high',   notes:'', done:false, deadline:false },
-      { id:'r10', title:'Fix outside tap',                   date:'2026-05-05', priority:'high',   notes:'Emailed David 2nd May', done:false, deadline:false },
-      { id:'r11', title:'New kettle',                        date:'2026-05-03', priority:'high',   notes:'', done:false, deadline:false },
-      { id:'r12', title:'Roof quote',                        date:'2026-05-04', priority:'high',   notes:'Quote only valid 30 days — need to find another company urgently', done:false, deadline:true },
-      { id:'r13', title:'Hang Monte pictures in his room',   date:'2026-05-02', priority:'low',    notes:'', done:false, deadline:false },
-      { id:'r14', title:'Chase Greenwich council speed signs',date:'2026-05-28', priority:'low',   notes:'Emailed 16th Jan, 14th Feb, 28th Apr', done:false, deadline:false },
-      { id:'r15', title:'Microsoft 365 Family renewal',      date:'2026-07-02', priority:'none',   notes:'', done:false, deadline:false },
-      { id:'r16', title:'Gas Meter Reading',                 date:'2026-04-30', priority:'none',   notes:'Monthly — 28th of each month', done:false, deadline:false },
+      { id:'r7',  title:"Bank accounts in Jem's name",       date:'2026-05-05', priority:'medium', notes:'', done:false, deadline:false },
       { id:'r17', title:'Which Will service is due to reply',date:'',           priority:'high',   notes:'Sent Will and Wishes for review 25th Aug. Takes 7-14 days', done:false, deadline:false },
-      { id:'r18', title:'Pictures in Lounge',                date:'',           priority:'medium', notes:'', done:false, deadline:false },
     ]
   },
   annual: {
@@ -506,6 +536,12 @@ const DEFAULT_DATA = {
   },
   houseToDo: {
     reminders: [
+      { id:'r8',  title:'Find a Bathroom Suite',             date:'2026-05-04', priority:'high',   notes:'', done:false, deadline:false },
+      { id:'r9',  title:'Sell or Rent the Flat',             date:'2026-05-04', priority:'high',   notes:'', done:false, deadline:false },
+      { id:'r10', title:'Fix outside tap',                   date:'2026-05-05', priority:'high',   notes:'Emailed David 2nd May', done:false, deadline:false },
+      { id:'r12', title:'Roof quote',                        date:'2026-05-04', priority:'high',   notes:'Quote only valid 30 days — need to find another company urgently', done:false, deadline:true },
+      { id:'r13', title:'Hang Monte pictures in his room',   date:'2026-05-02', priority:'low',    notes:'', done:false, deadline:false },
+      { id:'r18', title:'Pictures in Lounge',                date:'',           priority:'medium', notes:'', done:false, deadline:false },
       { id:'h1',  title:'Call Verisure about new appointment', date:'2026-05-07', priority:'high',   notes:'New smoke alarm. Also asked to quote for outside cameras. At house 23rd Jan', done:false, deadline:false },
       { id:'h2',  title:'Appoint a new Estate Agent',          date:'2026-05-05', priority:'high',   notes:'', done:false, deadline:false },
       { id:'h3',  title:'Carpet Cleaner',                      date:'2026-05-17', priority:'medium', notes:'', done:false, deadline:false },
@@ -552,6 +588,7 @@ const DEFAULT_DATA = {
   },
   buy: {
     reminders: [
+      { id:'r11', title:'New kettle',        date:'2026-05-03', priority:'high',   notes:'', done:false, deadline:false },
       { id:'b1', title:'Coffee steamer',        date:'', priority:'medium', notes:'', done:false, deadline:false },
       { id:'b2', title:'Roof rack bars for Range Rover', date:'', priority:'low', notes:'', done:false, deadline:false },
       { id:'b3', title:"Gracie's flute",        date:'', priority:'medium', notes:'Jemma emailed them 3rd Jan', done:false, deadline:false },
@@ -560,6 +597,9 @@ const DEFAULT_DATA = {
   },
   general: {
     reminders: [
+      { id:'r4',  title:'Netflix refund',                    date:'2026-05-15', priority:'high',   notes:'Owed two payments of £18.99 taken Feb & Mar. Check for refund 15th May', done:false, deadline:false },
+      { id:'r5',  title:'Bike service',                      date:'2026-05-05', priority:'high',   notes:'Slow puncture, chain', done:false, deadline:false },
+      { id:'r14', title:'Chase Greenwich council speed signs',date:'2026-05-28', priority:'low',   notes:'Emailed 16th Jan, 14th Feb, 28th Apr', done:false, deadline:false },
       { id:'g1', title:'Re-assemble the pull up bars', date:'', priority:'low',    notes:'Measure the bars', done:false, deadline:false },
       { id:'g2', title:'Convert mini DVDs to digital', date:'', priority:'low',    notes:'', done:false, deadline:false },
       { id:'g3', title:'Sky — new deals?',             date:'', priority:'medium', notes:'', done:false, deadline:false },
@@ -639,20 +679,127 @@ let packFilter = 'all';
 let shopFilter = 'all';
 let addFavToggle = false;
 
+// ═══════════════════════════════════════════════════════
+// GOOGLE DRIVE SYNC
+// ═══════════════════════════════════════════════════════
+const GOOGLE_CLIENT_ID = '750839557042-fulpg7hnerivo7ahrv5mdpm4e63kpga7.apps.googleusercontent.com';
+const DRIVE_FILE_NAME  = 'family-lists-data.json';
+const SCOPES           = 'https://www.googleapis.com/auth/drive.appdata';
+
+let accessToken  = null;
+let driveFileId  = null;
+let saveTimer    = null;
+
+function setSyncStatus(status, msg) {
+  const dot  = document.getElementById('syncDot');
+  const msgEl = document.getElementById('syncMsg');
+  const btn  = document.getElementById('signinBtn');
+  dot.className = 'sync-dot ' + status;
+  msgEl.textContent = msg;
+  btn.style.display = (status === 'grey') ? 'inline-block' : 'none';
+}
+
+function handleSignIn() {
+  if (typeof google === 'undefined') {
+    alert('Google Sign-In is still loading. Please wait a moment and try again.');
+    return;
+  }
+  const client = google.accounts.oauth2.initTokenClient({
+    client_id: GOOGLE_CLIENT_ID,
+    scope: SCOPES,
+    callback: async (resp) => {
+      if (resp.error) { setSyncStatus('red', 'Sign-in failed'); return; }
+      accessToken = resp.access_token;
+      setSyncStatus('orange', 'Loading data…');
+      await loadFromDrive();
+    }
+  });
+  client.requestAccessToken();
+}
+
+async function loadFromDrive() {
+  try {
+    const searchRes = await fetch(
+      `https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name='${DRIVE_FILE_NAME}'&fields=files(id,name)`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    const searchData = await searchRes.json();
+    if (searchData.files && searchData.files.length > 0) {
+      driveFileId = searchData.files[0].id;
+      const fileRes = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media`,
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+      const data = await fileRes.json();
+      if (data.remData)  state.remData  = data.remData;
+      if (data.packData) state.packData = data.packData;
+      if (data.shopData) state.shopData = data.shopData;
+      // migration
+      if (!state.remData.family) state.remData.family = { reminders: [] };
+    } else {
+      await saveToDrive();
+    }
+    setSyncStatus('green', 'Synced · ' + new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}));
+    renderRem(); renderPack(); renderShop();
+  } catch(e) {
+    setSyncStatus('red', 'Drive error — changes may not save');
+    console.error(e);
+  }
+}
+
+async function saveToDrive() {
+  if (!accessToken) return;
+  setSyncStatus('orange', 'Saving…');
+  const body = JSON.stringify({ remData: state.remData, packData: state.packData, shopData: state.shopData });
+  try {
+    if (driveFileId) {
+      await fetch(`https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=media`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        body
+      });
+    } else {
+      const meta = { name: DRIVE_FILE_NAME, parents: ['appDataFolder'] };
+      const form = new FormData();
+      form.append('metadata', new Blob([JSON.stringify(meta)], { type: 'application/json' }));
+      form.append('file',     new Blob([body],               { type: 'application/json' }));
+      const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
+        method: 'POST', headers: { Authorization: `Bearer ${accessToken}` }, body: form
+      });
+      const d = await res.json();
+      driveFileId = d.id;
+    }
+    setSyncStatus('green', 'Saved · ' + new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}));
+  } catch(e) {
+    setSyncStatus('red', 'Save failed — check connection');
+    console.error(e);
+  }
+}
+
+function triggerSave() {
+  clearTimeout(saveTimer);
+  if (accessToken) setSyncStatus('orange', 'Unsaved changes…');
+  saveTimer = setTimeout(saveToDrive, 1500);
+}
+
+// ═══════════════════════════════════════════════════════
+// LOCAL LOAD (fallback for before sign-in)
+// ═══════════════════════════════════════════════════════
 function load() {
   try {
-    const r = localStorage.getItem('fl_rem'); state.remData = r ? JSON.parse(r) : JSON.parse(JSON.stringify(DEFAULT_DATA));
+    const r = localStorage.getItem('fl_rem'); state.remData  = r ? JSON.parse(r) : JSON.parse(JSON.stringify(DEFAULT_DATA));
     const p = localStorage.getItem('fl_pack'); state.packData = p ? JSON.parse(p) : JSON.parse(JSON.stringify(PACK_DEFAULT));
     const s = localStorage.getItem('fl_shop'); state.shopData = s ? JSON.parse(s) : JSON.parse(JSON.stringify(SHOP_DEFAULT));
   } catch(e) {
-    state.remData = JSON.parse(JSON.stringify(DEFAULT_DATA));
+    state.remData  = JSON.parse(JSON.stringify(DEFAULT_DATA));
     state.packData = JSON.parse(JSON.stringify(PACK_DEFAULT));
     state.shopData = JSON.parse(JSON.stringify(SHOP_DEFAULT));
   }
+  if (!state.remData.family) state.remData.family = { reminders: [] };
 }
-function saveRem()  { localStorage.setItem('fl_rem',  JSON.stringify(state.remData)); }
-function savePack() { localStorage.setItem('fl_pack', JSON.stringify(state.packData)); }
-function saveShop() { localStorage.setItem('fl_shop', JSON.stringify(state.shopData)); }
+function saveRem()  { localStorage.setItem('fl_rem',  JSON.stringify(state.remData));  triggerSave(); }
+function savePack() { localStorage.setItem('fl_pack', JSON.stringify(state.packData)); triggerSave(); }
+function saveShop() { localStorage.setItem('fl_shop', JSON.stringify(state.shopData)); triggerSave(); }
 
 // ═══════════════════════════════════════════════════════
 // MODE SWITCHING
@@ -677,15 +824,19 @@ const PRIORITY_COLOR = { high: '#ff453a', medium: '#ff9f0a', low: '#5b9cf6', non
 function setRemView(v) {
   remView = v;
   document.getElementById('vbtn-lists').classList.toggle('active', v==='lists');
+  document.getElementById('vbtn-due').classList.toggle('active', v==='due');
   document.getElementById('vbtn-scheduled').classList.toggle('active', v==='scheduled');
   document.getElementById('rem-lists-view').style.display     = v==='lists' ? '' : 'none';
+  document.getElementById('rem-due-view').style.display       = v==='due' ? '' : 'none';
   document.getElementById('rem-scheduled-view').style.display = v==='scheduled' ? '' : 'none';
   if (v==='scheduled') renderScheduled();
+  if (v==='due') renderDueNow();
 }
 
 function renderRem() {
   renderGrid();
   if (remView==='scheduled') renderScheduled();
+  if (remView==='due') renderDueNow();
 }
 
 function renderGrid() {
@@ -743,6 +894,37 @@ function renderScheduled() {
     items.forEach(item => el.innerHTML += scheduledItemHTML(item, g));
   });
   if (!all.length) el.innerHTML = '<p style="color:var(--text-muted);padding:24px 0;text-align:center">No scheduled reminders</p>';
+}
+
+function renderDueNow() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const todayStr = today.toISOString().slice(0,10);
+  let overdue = [], dueToday = [];
+  Object.entries(state.remData).forEach(([listKey, listData]) => {
+    if (listKey === 'meds') return;
+    (listData.reminders || []).forEach(item => {
+      if (!item.done && item.date) {
+        if (item.date < todayStr) overdue.push({ ...item, listKey });
+        else if (item.date === todayStr) dueToday.push({ ...item, listKey });
+      }
+    });
+  });
+  overdue.sort((a,b) => a.date.localeCompare(b.date));
+  dueToday.sort((a,b) => (b.priority||'none').localeCompare(a.priority||'none'));
+  const el = document.getElementById('rem-due-content');
+  el.innerHTML = '';
+  if (!overdue.length && !dueToday.length) {
+    el.innerHTML = '<p style="color:var(--text-muted);padding:24px 0;text-align:center">🎉 Nothing overdue or due today</p>';
+    return;
+  }
+  if (overdue.length) {
+    el.innerHTML += `<div class="rem-group-header">⚠ Overdue (${overdue.length})</div>`;
+    overdue.forEach(item => el.innerHTML += scheduledItemHTML(item, 'overdue'));
+  }
+  if (dueToday.length) {
+    el.innerHTML += `<div class="rem-group-header">Today (${dueToday.length})</div>`;
+    dueToday.forEach(item => el.innerHTML += scheduledItemHTML(item, 'today'));
+  }
 }
 
 function scheduledItemHTML(item, group) {
@@ -928,17 +1110,30 @@ function openItemModal(listKey, id) {
   document.getElementById('itemEditPriority').value = item.priority||'none';
   document.getElementById('itemEditDeadline').checked = !!item.deadline;
   document.getElementById('itemDeadlineField').style.display = meta.ref ? 'none' : '';
+  // Populate category dropdown
+  const catSel = document.getElementById('itemEditCategory');
+  catSel.innerHTML = Object.entries(LIST_META).filter(([k,m])=>!m.ref).map(([k,m])=>`<option value="${k}"${k===listKey?' selected':''}>${m.label}</option>`).join('');
+  document.getElementById('itemCategoryField').style.display = meta.ref ? 'none' : '';
   document.getElementById('itemModal').classList.add('open');
 }
 function closeItemModal() { document.getElementById('itemModal').classList.remove('open'); }
 function saveItemEdit() {
-  const item = state.remData[editingItemList].reminders.find(i=>i.id===editingItemId);
+  const list = state.remData[editingItemList].reminders;
+  const item = list.find(i=>i.id===editingItemId);
   if (!item) return;
   item.title    = document.getElementById('itemEditTitle').value.trim() || item.title;
   item.date     = document.getElementById('itemEditDate').value;
   item.notes    = document.getElementById('itemEditNotes').value;
   item.priority = document.getElementById('itemEditPriority').value;
   item.deadline = document.getElementById('itemEditDeadline').checked;
+  // Handle category change
+  const newCat = document.getElementById('itemEditCategory').value;
+  if (newCat && newCat !== editingItemList) {
+    state.remData[editingItemList].reminders = list.filter(i=>i.id!==editingItemId);
+    if (!state.remData[newCat]) state.remData[newCat] = { reminders: [] };
+    state.remData[newCat].reminders.push(item);
+    editingItemList = newCat;
+  }
   saveRem(); closeItemModal();
   if (currentList) renderDetail(); else { renderGrid(); if(remView==='scheduled') renderScheduled(); }
 }
