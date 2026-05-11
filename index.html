@@ -492,7 +492,6 @@ select { background: var(--surface2); border: 1px solid var(--border); color: va
 // DATA
 // ═══════════════════════════════════════════════════════
 const LIST_META = {
-  reminders:      { icon: '📋', color: '#5b9cf6', label: 'Reminders' },
   family:         { icon: '👨‍👩‍👧‍👦', color: '#ff6b9d', label: 'Family' },
   annual:         { icon: '🔄', color: '#32d74b', label: 'Annual Renewals' },
   houseToDo:      { icon: '🏠', color: '#ff9f0a', label: 'House To Do' },
@@ -503,9 +502,6 @@ const LIST_META = {
 };
 
 const DEFAULT_DATA = {
-  reminders: {
-    reminders: []
-  },
   family: {
     reminders: [
       { id:'r1',  title:'Sign the Will',                     date:'2026-05-10', priority:'high',   notes:'', done:false, deadline:false },
