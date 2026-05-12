@@ -737,40 +737,52 @@ const DEFAULT_DATA = {
 
 const PACK_CATS_DEFAULT = ['Documents','Clothing','Toiletries','Kids','Tech','Health','Running/Gym','Swimming/Beach','Other'];
 
+// Master template — used to seed new trips
+const PACK_MASTER_ITEMS = [
+  {cat:'Documents',label:'Passports',qty:1},
+  {cat:'Documents',label:'Travel insurance',qty:1},
+  {cat:'Documents',label:'ESTA / visas',qty:1},
+  {cat:'Documents',label:'Booking confirmations',qty:1},
+  {cat:'Documents',label:'Travel money / cards',qty:1},
+  {cat:'Clothing',label:'T-shirts',qty:5},
+  {cat:'Clothing',label:'Shorts',qty:3},
+  {cat:'Clothing',label:'Swimwear',qty:2},
+  {cat:'Clothing',label:'Evening wear',qty:2},
+  {cat:'Clothing',label:'Comfortable shoes',qty:1},
+  {cat:'Clothing',label:'Trainers',qty:1},
+  {cat:'Toiletries',label:'Sun cream',qty:1},
+  {cat:'Toiletries',label:'Shampoo & conditioner',qty:1},
+  {cat:'Toiletries',label:'Toothbrushes & toothpaste',qty:1},
+  {cat:'Toiletries',label:'Deodorant',qty:1},
+  {cat:'Kids',label:'Reins / harness',qty:1},
+  {cat:'Kids',label:'Kids sun cream',qty:1},
+  {cat:'Kids',label:'Nappies / pull-ups',qty:1},
+  {cat:'Kids',label:'Favourite toys',qty:1},
+  {cat:'Kids',label:'Snacks for journey',qty:1},
+  {cat:'Tech',label:'Phone chargers',qty:1},
+  {cat:'Tech',label:'Portable battery pack',qty:1},
+  {cat:'Tech',label:'Headphones',qty:1},
+  {cat:'Tech',label:'Camera',qty:1},
+  {cat:'Health',label:'Ear Calm',qty:1},
+  {cat:'Health',label:'Antihistamines',qty:1},
+  {cat:'Health',label:'Ibuprofen & paracetamol',qty:1},
+  {cat:'Health',label:'Plasters',qty:1},
+];
+
+function makeTripItems() {
+  return PACK_MASTER_ITEMS.map((t,i) => ({
+    id: 'pk' + Date.now() + '_' + i,
+    cat: t.cat, label: t.label, qty: t.qty, checked: false, excluded: false
+  }));
+}
+
 const PACK_DEFAULT = {
-  trips: ['Disney World','Summer Holiday','Weekend Away','Ski Trip'],
-  currentTrip: 'Disney World',
-  // exclusions: { 'Trip Name': ['itemId', ...] }
-  exclusions: {},
-  items: [
-    {id:'pk1',cat:'Documents',label:'Passports',checked:false,qty:1},
-    {id:'pk2',cat:'Documents',label:'Travel insurance',checked:false,qty:1},
-    {id:'pk3',cat:'Documents',label:'ESTA / visas',checked:false,qty:1},
-    {id:'pk4',cat:'Documents',label:'Booking confirmations',checked:false,qty:1},
-    {id:'pk5',cat:'Documents',label:'Travel money / cards',checked:false,qty:1},
-    {id:'pk6',cat:'Clothing',label:'T-shirts',checked:false,qty:5},
-    {id:'pk7',cat:'Clothing',label:'Shorts',checked:false,qty:3},
-    {id:'pk8',cat:'Clothing',label:'Swimwear',checked:false,qty:2},
-    {id:'pk9',cat:'Clothing',label:'Evening wear',checked:false,qty:2},
-    {id:'pk10',cat:'Clothing',label:'Comfortable shoes',checked:false,qty:1},
-    {id:'pk11',cat:'Clothing',label:'Trainers',checked:false,qty:1},
-    {id:'pk12',cat:'Toiletries',label:'Sun cream',checked:false,qty:1},
-    {id:'pk13',cat:'Toiletries',label:'Shampoo & conditioner',checked:false,qty:1},
-    {id:'pk14',cat:'Toiletries',label:'Toothbrushes & toothpaste',checked:false,qty:1},
-    {id:'pk15',cat:'Toiletries',label:'Deodorant',checked:false,qty:1},
-    {id:'pk16',cat:'Kids',label:'Reins / harness',checked:false,qty:1},
-    {id:'pk17',cat:'Kids',label:'Kids sun cream',checked:false,qty:1},
-    {id:'pk18',cat:'Kids',label:'Nappies / pull-ups',checked:false,qty:1},
-    {id:'pk19',cat:'Kids',label:'Favourite toys',checked:false,qty:1},
-    {id:'pk20',cat:'Kids',label:'Snacks for journey',checked:false,qty:1},
-    {id:'pk21',cat:'Tech',label:'Phone chargers',checked:false,qty:1},
-    {id:'pk22',cat:'Tech',label:'Portable battery pack',checked:false,qty:1},
-    {id:'pk23',cat:'Tech',label:'Headphones',checked:false,qty:1},
-    {id:'pk24',cat:'Tech',label:'Camera',checked:false,qty:1},
-    {id:'pk25',cat:'Health',label:'Ear Calm',checked:false,qty:1},
-    {id:'pk26',cat:'Health',label:'Antihistamines',checked:false,qty:1},
-    {id:'pk27',cat:'Health',label:'Ibuprofen & paracetamol',checked:false,qty:1},
-    {id:'pk28',cat:'Health',label:'Plasters',checked:false,qty:1},
+  currentTrip: 0,
+  trips: [
+    { name: 'Disney World',   items: makeTripItems() },
+    { name: 'Summer Holiday', items: makeTripItems() },
+    { name: 'Weekend Away',   items: makeTripItems() },
+    { name: 'Ski Trip',       items: makeTripItems() },
   ]
 };
 
@@ -869,15 +881,27 @@ async function loadFromDrive() {
       if (data.shopData) state.shopData = data.shopData;
       // migration
       if (!state.remData.family) state.remData.family = { reminders: [] };
-      // migrate pack: Electronics → Tech, add missing qty/exclusions
-      if (state.packData.items) {
-        state.packData.items.forEach(i => {
-          if (i.cat === 'Electronics') i.cat = 'Tech';
-          if (!i.qty) i.qty = 1;
-        });
+      // migrate pack: old flat structure → new per-trip structure
+      if (state.packData.items && !state.packData.trips?.[0]?.items) {
+        // Old format: flat items array + trips array of strings
+        const oldTrips = (state.packData.trips || ['Disney World','Summer Holiday','Weekend Away','Ski Trip']);
+        const oldItems = state.packData.items.map(i => ({
+          ...i,
+          cat: i.cat === 'Electronics' ? 'Tech' : i.cat,
+          qty: i.qty || 1,
+          excluded: false
+        }));
+        state.packData.trips = oldTrips.map(name => ({
+          name: typeof name === 'string' ? name : name.name,
+          items: oldItems.map((item,idx) => ({ ...item, id: item.id+'_'+idx+'_'+Date.now(), checked: false }))
+        }));
+        delete state.packData.items;
+        delete state.packData.exclusions;
+        state.packData.currentTrip = 0;
       }
-      if (!state.packData.exclusions) state.packData.exclusions = {};
-      if (!state.packData.currentTrip && state.packData.trips?.length) state.packData.currentTrip = state.packData.trips[0];
+      // ensure currentTrip is numeric index
+      if (typeof state.packData.currentTrip === 'string') state.packData.currentTrip = 0;
+      if (!state.packData.trips?.length) state.packData = JSON.parse(JSON.stringify(PACK_DEFAULT));
     } else {
       await saveToDrive();
     }
@@ -1304,9 +1328,21 @@ let editingPackId = null;
 let packEditQty = 1;
 let packEditExcluded = false;
 
+function currentTripIndex() {
+  const idx = state.packData.currentTrip;
+  const trips = state.packData.trips || [];
+  return (typeof idx === 'number' && idx < trips.length) ? idx : 0;
+}
+function currentTripObj() {
+  return state.packData.trips[currentTripIndex()] || null;
+}
+function currentTripItems() {
+  return currentTripObj()?.items || [];
+}
+
 function getPackCats() {
-  // Built-in + any custom cats found in items
-  const custom = (state.packData.items||[]).map(i=>i.cat).filter(c=>!PACK_CATS_DEFAULT.includes(c));
+  const items = currentTripItems();
+  const custom = items.map(i=>i.cat).filter(c=>!PACK_CATS_DEFAULT.includes(c));
   return [...PACK_CATS_DEFAULT, ...new Set(custom)];
 }
 
@@ -1322,32 +1358,14 @@ function populatePackCatSelects() {
 
 function populateTripSelect() {
   const trips = state.packData.trips || [];
-  const current = state.packData.currentTrip || trips[0] || '';
+  const idx = currentTripIndex();
   document.getElementById('tripSelect').innerHTML =
-    trips.map(t=>`<option value="${t}"${t===current?' selected':''}>${t}</option>`).join('');
+    trips.map((t,i)=>`<option value="${i}"${i===idx?' selected':''}>${t.name}</option>`).join('');
 }
 
 function onTripChange() {
-  state.packData.currentTrip = document.getElementById('tripSelect').value;
+  state.packData.currentTrip = parseInt(document.getElementById('tripSelect').value);
   savePack(); renderPack();
-}
-
-function currentTrip() {
-  return state.packData.currentTrip || (state.packData.trips||[])[0] || '';
-}
-
-function isExcluded(itemId) {
-  const trip = currentTrip();
-  return !!(state.packData.exclusions?.[trip]?.includes(itemId));
-}
-
-function setExclusion(itemId, excluded) {
-  const trip = currentTrip();
-  if (!state.packData.exclusions) state.packData.exclusions = {};
-  if (!state.packData.exclusions[trip]) state.packData.exclusions[trip] = [];
-  const arr = state.packData.exclusions[trip];
-  if (excluded && !arr.includes(itemId)) arr.push(itemId);
-  if (!excluded) state.packData.exclusions[trip] = arr.filter(i=>i!==itemId);
 }
 
 function setPackFilter(f) {
@@ -1359,9 +1377,7 @@ function setPackFilter(f) {
 function renderPack() {
   populateTripSelect();
   populatePackCatSelects();
-  const allItems = state.packData.items || [];
-  // Only items not excluded for this trip
-  const items = allItems.filter(i => !isExcluded(i.id));
+  const items = currentTripItems().filter(i => !i.excluded);
   const cats = getPackCats().filter(c => items.some(i=>i.cat===c));
   const total = items.length, done = items.filter(i=>i.checked).length;
   document.getElementById('pack-progress').style.width = total ? (done/total*100)+'%' : '0%';
@@ -1375,7 +1391,9 @@ function renderPack() {
     let html = `<div class="pack-section"><div class="section-header"><span class="section-title">${cat}</span></div>`;
     catItems.forEach(item => {
       const qty = item.qty || 1;
-      const qtyLabel = qty > 1 ? `<span class="pack-qty">×${qty}</span>` : `<span class="pack-qty" style="color:transparent">×1</span>`;
+      const qtyLabel = qty > 1
+        ? `<span class="pack-qty">×${qty}</span>`
+        : `<span class="pack-qty" style="color:transparent">×1</span>`;
       html += `<div class="pack-item ${item.checked?'checked':''}" id="pi-${item.id}"
         ontouchstart="packPressStart('${item.id}',event)"
         ontouchend="packPressEnd('${item.id}',event)"
@@ -1393,7 +1411,6 @@ function renderPack() {
   });
 }
 
-// Hold-to-edit: 500ms press
 let packPressTimer = null;
 let packPressMoved = false;
 
@@ -1404,6 +1421,7 @@ function packPressStart(id, e) {
   packPressTimer = setTimeout(() => {
     if (!packPressMoved) openPackItemModal(id);
     if (el) el.classList.remove('pressing');
+    packPressTimer = null;
   }, 500);
 }
 function packPressEnd(id, e) {
@@ -1423,20 +1441,20 @@ function packPressCancel(id) {
 }
 
 function togglePack(id) {
-  const item = state.packData.items.find(i=>i.id===id);
+  const item = currentTripItems().find(i=>i.id===id);
   if (item) { item.checked = !item.checked; savePack(); renderPack(); }
 }
 
 function openPackItemModal(id) {
   editingPackId = id;
-  const item = state.packData.items.find(i=>i.id===id);
+  const item = currentTripItems().find(i=>i.id===id);
   if (!item) return;
   populatePackCatSelects();
   document.getElementById('packEditLabel').value = item.label;
   document.getElementById('packEditCat').value = item.cat;
   packEditQty = item.qty || 1;
   document.getElementById('packEditQtyDisplay').textContent = packEditQty;
-  packEditExcluded = isExcluded(id);
+  packEditExcluded = !!item.excluded;
   updateExcludeToggleUI();
   document.getElementById('packItemModal').classList.add('open');
 }
@@ -1455,14 +1473,17 @@ function toggleExclude() {
   updateExcludeToggleUI();
 }
 function updateExcludeToggleUI() {
+  const trip = currentTripObj();
   const el = document.getElementById('excludeToggle');
   const lbl = document.getElementById('excludeLabel');
   el.classList.toggle('on', packEditExcluded);
-  lbl.textContent = packEditExcluded ? `Excluded from ${currentTrip()}` : `Included in ${currentTrip()}`;
+  lbl.textContent = packEditExcluded
+    ? `Excluded from ${trip?.name || 'this trip'}`
+    : `Included in ${trip?.name || 'this trip'}`;
 }
 
 function savePackItemEdit() {
-  const item = state.packData.items.find(i=>i.id===editingPackId);
+  const item = currentTripItems().find(i=>i.id===editingPackId);
   if (!item) return;
   const newCat = document.getElementById('packEditCat').value;
   if (newCat === '__new__') {
@@ -1474,17 +1495,14 @@ function savePackItemEdit() {
   }
   item.label = document.getElementById('packEditLabel').value.trim() || item.label;
   item.qty = packEditQty;
-  setExclusion(editingPackId, packEditExcluded);
+  item.excluded = packEditExcluded;
   savePack(); closePackItemModal(); renderPack();
 }
 
 function deletePackItem() {
-  if (!confirm('Delete this item from all trips?')) return;
-  state.packData.items = state.packData.items.filter(i=>i.id!==editingPackId);
-  // Remove from all exclusion lists too
-  Object.keys(state.packData.exclusions||{}).forEach(t => {
-    state.packData.exclusions[t] = state.packData.exclusions[t].filter(i=>i!==editingPackId);
-  });
+  if (!confirm('Delete this item from this trip?')) return;
+  const trip = currentTripObj();
+  trip.items = trip.items.filter(i=>i.id!==editingPackId);
   savePack(); closePackItemModal(); renderPack();
 }
 
@@ -1496,14 +1514,16 @@ function addPackItem() {
     cat = prompt('New category name:')?.trim();
     if (!cat) return;
   }
-  state.packData.items.push({ id:'pk'+Date.now(), cat, label:text, checked:false, qty:1 });
+  const trip = currentTripObj();
+  if (!trip) return;
+  trip.items.push({ id:'pk'+Date.now(), cat, label:text, qty:1, checked:false, excluded:false });
   document.getElementById('packNewText').value = '';
   savePack(); renderPack();
 }
 
 function resetPack() {
   if (!confirm('Reset all packed checkmarks for this trip?')) return;
-  state.packData.items.forEach(i=>i.checked=false);
+  currentTripItems().forEach(i=>i.checked=false);
   savePack(); renderPack();
 }
 
@@ -1523,7 +1543,7 @@ function renderTripList() {
   const el = document.getElementById('tripList');
   el.innerHTML = trips.map((t,i) => `
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-      <input type="text" value="${t}" id="tripname-${i}"
+      <input type="text" value="${t.name}" id="tripname-${i}"
         style="flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:9px;font-size:14px"
         onchange="renameTripAt(${i}, this.value)">
       ${trips.length > 1 ? `<button class="btn danger" style="padding:6px 10px" onclick="deleteTripAt(${i})">✕</button>` : ''}
@@ -1532,31 +1552,23 @@ function renderTripList() {
 }
 
 function renameTripAt(i, newName) {
-  const old = state.packData.trips[i];
-  if (!newName.trim() || newName === old) return;
-  state.packData.trips[i] = newName.trim();
-  // Move exclusions to new name
-  if (state.packData.exclusions?.[old]) {
-    state.packData.exclusions[newName.trim()] = state.packData.exclusions[old];
-    delete state.packData.exclusions[old];
-  }
-  if (state.packData.currentTrip === old) state.packData.currentTrip = newName.trim();
+  if (!newName.trim()) return;
+  state.packData.trips[i].name = newName.trim();
   savePack();
 }
 
 function deleteTripAt(i) {
-  const name = state.packData.trips[i];
-  if (!confirm(`Delete trip "${name}"?`)) return;
+  const name = state.packData.trips[i].name;
+  if (!confirm(`Delete trip "${name}" and all its items?`)) return;
   state.packData.trips.splice(i, 1);
-  if (state.packData.exclusions?.[name]) delete state.packData.exclusions[name];
-  if (state.packData.currentTrip === name) state.packData.currentTrip = state.packData.trips[0] || '';
+  if (state.packData.currentTrip >= state.packData.trips.length) state.packData.currentTrip = 0;
   savePack(); renderTripList();
 }
 
 function addTrip() {
   const name = document.getElementById('newTripName').value.trim();
   if (!name) return;
-  if (!state.packData.trips.includes(name)) state.packData.trips.push(name);
+  state.packData.trips.push({ name, items: makeTripItems() });
   document.getElementById('newTripName').value = '';
   savePack(); renderTripList();
 }
