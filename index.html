@@ -1809,26 +1809,64 @@ async function fetchGcalEventsForMonth(yearMonth) {
 }
 
 async function fetchAllCalendars() {
-  if (!accessToken) return;
+  if (!accessToken) return false;
   try {
     const res = await fetch('https://www.googleapis.com/calendar/v3/users/me/calendarList', {
       headers: { Authorization: `Bearer ${accessToken}` }
     });
     const data = await res.json();
+    // If we get a 401/403, the token doesn't have calendar scope
+    if (data.error) {
+      console.warn('Calendar auth error:', data.error);
+      return false; // signal failure
+    }
     allGcalendars = (data.items || []).filter(c => c.accessRole !== 'freeBusyReader');
-    // Build color map
-    allGcalendars.forEach(c => {
-      gcalColors[c.id] = c.backgroundColor || '#5b9cf6';
-    });
-    // Load saved enabled calendars
+    allGcalendars.forEach(c => { gcalColors[c.id] = c.backgroundColor || '#5b9cf6'; });
     const saved = state.calData?.enabledCalendars;
     if (saved) enabledCalendars = new Set(saved);
-    else enabledCalendars = new Set(allGcalendars.map(c => c.id)); // all by default
-  } catch(e) { console.error('Calendar fetch failed', e); }
+    else enabledCalendars = new Set(allGcalendars.map(c => c.id));
+    return true;
+  } catch(e) {
+    console.error('Calendar fetch failed', e);
+    return false;
+  }
+}
+
+function requestCalendarAccess() {
+  if (typeof google === 'undefined') return;
+  const client = google.accounts.oauth2.initTokenClient({
+    client_id: GOOGLE_CLIENT_ID,
+    scope: SCOPES,
+    prompt: 'consent',
+    callback: async (resp) => {
+      if (resp.error) return;
+      accessToken = resp.access_token;
+      gcalEvents = {};
+      allGcalendars = [];
+      const ok = await fetchAllCalendars();
+      if (ok) renderCalendar();
+    }
+  });
+  client.requestAccessToken();
 }
 
 async function renderCalendar() {
-  if (!allGcalendars.length) await fetchAllCalendars();
+  if (!allGcalendars.length) {
+    const ok = await fetchAllCalendars();
+    if (!ok) {
+      // Token doesn't have calendar scope — show connect prompt
+      document.getElementById('cal-months-row').innerHTML = '';
+      document.getElementById('cal-detail-month').textContent = '';
+      document.getElementById('cal-detail-items').innerHTML = `
+        <div style="text-align:center;padding:40px 24px">
+          <div style="font-size:32px;margin-bottom:12px">📅</div>
+          <div style="font-size:15px;font-weight:600;margin-bottom:8px">Connect Google Calendar</div>
+          <div style="font-size:13px;color:var(--text-muted);margin-bottom:24px">Grant calendar access to see your events alongside your reminders.</div>
+          <button class="btn primary" onclick="requestCalendarAccess()" style="margin:0 auto">Connect Calendar</button>
+        </div>`;
+      return;
+    }
+  }
 
   const months = getNext12Months();
   const todayKey = new Date().toISOString().slice(0,7);
@@ -1932,15 +1970,17 @@ async function openCalSettingsModal() {
   const el = document.getElementById('calendarList');
   if (!allGcalendars.length) {
     el.innerHTML = '<p style="color:var(--text-muted);font-size:13px">Loading calendars…</p>';
-    await fetchAllCalendars();
-  }
-  if (!allGcalendars.length) {
-    el.innerHTML = '<p style="color:var(--text-muted);font-size:13px">No calendars found. Make sure you\'re signed in.</p>';
-    return;
+    const ok = await fetchAllCalendars();
+    if (!ok) {
+      el.innerHTML = `
+        <p style="color:var(--text-muted);font-size:13px;margin-bottom:12px">Calendar access not yet granted.</p>
+        <button class="btn primary" onclick="closeCalSettingsModal();requestCalendarAccess()">Connect Google Calendar</button>`;
+      return;
+    }
   }
   el.innerHTML = allGcalendars.map(c => `
     <label style="display:flex;align-items:center;gap:10px;padding:10px 0;cursor:pointer;border-bottom:1px solid var(--border)">
-      <input type="checkbox" id="calcb-${c.id}" style="width:auto;width:18px;height:18px" ${!enabledCalendars || enabledCalendars.has(c.id) ? 'checked' : ''}>
+      <input type="checkbox" id="calcb-${c.id}" style="width:18px;height:18px" ${!enabledCalendars || enabledCalendars.has(c.id) ? 'checked' : ''}>
       <span style="width:12px;height:12px;border-radius:50%;background:${gcalColors[c.id]||'#5b9cf6'};flex-shrink:0;display:inline-block"></span>
       <span style="font-size:14px">${c.summary}</span>
     </label>
