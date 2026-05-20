@@ -132,8 +132,9 @@ input, select, textarea, button { font-family: inherit; }
 .rem-item.overdue { border-color: rgba(255,69,58,0.3); background: rgba(255,69,58,0.05); }
 .rem-item.urgent { border-color: rgba(255,159,10,0.35); background: rgba(255,159,10,0.06); }
 .rem-circle {
-  width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border);
+  width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--border);
   flex-shrink: 0; margin-top: 1px; transition: all 0.15s; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
 }
 .rem-circle:hover { border-color: var(--accent); }
 .rem-circle.done { background: var(--accent); border-color: var(--accent); }
@@ -1212,18 +1213,17 @@ function renderDetail() {
   }
 
   // Standard list — high priority first, then by date, then undated
-  const sorted = [...items].sort((a,b) => {
+  const activeItems = [...items].filter(i => !i.done).sort((a,b) => {
     const pOrd = {high:0,medium:1,low:2,none:3};
-    if (!a.done && b.done) return -1;
-    if (a.done && !b.done) return 1;
     const pa = pOrd[a.priority||'none'], pb = pOrd[b.priority||'none'];
     if (pa !== pb) return pa - pb;
     if (a.date && b.date) return a.date.localeCompare(b.date);
     if (a.date) return -1; if (b.date) return 1;
     return 0;
   });
+  const done = items.filter(i => i.done);
 
-  sorted.forEach(item => {
+  activeItems.forEach(item => {
     const priorityCol = PRIORITY_COLOR[item.priority||'none'];
     const deadlineBadge = item.deadline ? `<span class="deadline-badge" style="font-size:10px">⏰ Deadline</span>` : '';
     el.innerHTML += `
@@ -1231,7 +1231,7 @@ function renderDetail() {
         <div class="rem-circle ${item.done?'done':''}" onclick="event.stopPropagation();toggleDone('${currentList}','${item.id}')"></div>
         <div class="rem-priority-dot" style="background:${priorityCol};margin-top:6px"></div>
         <div class="rem-detail-item-body">
-          <div class="rem-detail-title-text ${item.done?'done':''}">${item.title}</div>
+          <div class="rem-detail-title-text">${item.title}</div>
           <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:3px">
             ${item.date ? `<span class="rem-detail-date" style="font-size:12px;color:var(--text-muted)">${formatDate(item.date)}</span>` : ''}
             ${deadlineBadge}
@@ -1240,13 +1240,48 @@ function renderDetail() {
         </div>
       </div>`;
   });
+
+  if (done.length) {
+    el.innerHTML += `
+      <div id="completed-toggle" onclick="toggleCompletedVisible()" style="padding:12px 0;color:var(--text-muted);font-size:13px;cursor:pointer;border-top:1px solid var(--border);margin-top:4px">
+        ▸ ${done.length} completed
+      </div>
+      <div id="completed-items" style="display:none">`;
+    done.forEach(item => {
+      el.innerHTML += `
+        <div class="rem-detail-item" onclick="openItemModal('${currentList}','${item.id}')">
+          <div class="rem-circle done" onclick="event.stopPropagation();toggleDone('${currentList}','${item.id}')"></div>
+          <div class="rem-priority-dot" style="background:transparent;margin-top:6px"></div>
+          <div class="rem-detail-item-body">
+            <div class="rem-detail-title-text done">${item.title}</div>
+            ${item.notes ? `<div class="rem-detail-note">${item.notes}</div>` : ''}
+          </div>
+        </div>`;
+    });
+    el.innerHTML += `</div>`;
+  }
+}
+
+function toggleCompletedVisible() {
+  const el = document.getElementById('completed-items');
+  const toggle = document.getElementById('completed-toggle');
+  if (!el) return;
+  const visible = el.style.display !== 'none';
+  el.style.display = visible ? 'none' : 'block';
+  const count = el.querySelectorAll('.rem-detail-item').length;
+  toggle.innerHTML = `${visible ? '▸' : '▾'} ${count} completed`;
 }
 
 function toggleDone(listKey, id) {
   const item = state.remData[listKey].reminders.find(i=>i.id===id);
   if (item) { item.done = !item.done; saveRem(); }
   if (currentList) renderDetail();
-  else { renderGrid(); }
+  else {
+    renderGrid();
+    if (remView==='high')   renderPriority('high');
+    if (remView==='medium') renderPriority('medium');
+    if (remView==='due')    renderDueNow();
+  }
 }
 
 function addToCurrentList() {
