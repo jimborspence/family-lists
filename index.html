@@ -1010,6 +1010,8 @@ async function loadFromDrive() {
       await saveToDrive();
     }
     setSyncStatus('green', 'Synced · ' + new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}));
+    // Fetch Google Calendars in background
+    fetchAllCalendars();
     // Dismiss landing screen
     const landing = document.getElementById('landing');
     landing.classList.add('hidden');
@@ -1925,20 +1927,24 @@ async function selectCalMonth(key, month, year) {
 }
 
 // ── Calendar settings ──
-function openCalSettingsModal() {
+async function openCalSettingsModal() {
+  document.getElementById('calSettingsModal').classList.add('open');
   const el = document.getElementById('calendarList');
   if (!allGcalendars.length) {
-    el.innerHTML = '<p style="color:var(--text-muted);font-size:13px">Sign in first to load calendars.</p>';
-  } else {
-    el.innerHTML = allGcalendars.map(c => `
-      <label style="display:flex;align-items:center;gap:10px;padding:8px 0;cursor:pointer;border-bottom:1px solid var(--border)">
-        <input type="checkbox" id="calcb-${c.id}" style="width:auto" ${!enabledCalendars || enabledCalendars.has(c.id) ? 'checked' : ''}>
-        <span style="width:12px;height:12px;border-radius:50%;background:${gcalColors[c.id]||'#5b9cf6'};flex-shrink:0;display:inline-block"></span>
-        <span style="font-size:14px">${c.summary}</span>
-      </label>
-    `).join('');
+    el.innerHTML = '<p style="color:var(--text-muted);font-size:13px">Loading calendars…</p>';
+    await fetchAllCalendars();
   }
-  document.getElementById('calSettingsModal').classList.add('open');
+  if (!allGcalendars.length) {
+    el.innerHTML = '<p style="color:var(--text-muted);font-size:13px">No calendars found. Make sure you\'re signed in.</p>';
+    return;
+  }
+  el.innerHTML = allGcalendars.map(c => `
+    <label style="display:flex;align-items:center;gap:10px;padding:10px 0;cursor:pointer;border-bottom:1px solid var(--border)">
+      <input type="checkbox" id="calcb-${c.id}" style="width:auto;width:18px;height:18px" ${!enabledCalendars || enabledCalendars.has(c.id) ? 'checked' : ''}>
+      <span style="width:12px;height:12px;border-radius:50%;background:${gcalColors[c.id]||'#5b9cf6'};flex-shrink:0;display:inline-block"></span>
+      <span style="font-size:14px">${c.summary}</span>
+    </label>
+  `).join('');
 }
 function closeCalSettingsModal() {
   document.getElementById('calSettingsModal').classList.remove('open');
