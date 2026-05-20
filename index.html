@@ -220,7 +220,7 @@ input, select, textarea, button { font-family: inherit; }
 .pack-item { display: flex; align-items: center; gap: 12px; padding: 10px 13px; background: var(--surface); border-radius: 10px; margin-bottom: 5px; cursor: pointer; transition: all 0.15s; border: 1px solid var(--border); user-select: none; }
 .pack-item:hover { background: var(--surface2); }
 .pack-item.pressing { background: var(--surface3); transform: scale(0.98); }
-.pack-check { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+.pack-check { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.2s; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .pack-item.checked .pack-check { background: var(--accent); border-color: var(--accent); }
 .pack-item.checked .pack-check::after { content: '✓'; color: #fff; font-size: 12px; font-weight: 700; }
 .pack-label { font-size: 14px; transition: all 0.2s; flex: 1; }
@@ -376,8 +376,9 @@ select { background: var(--surface2); border: 1px solid var(--border); color: va
       </div>
       <div class="rem-view-toggle">
         <div class="rem-view-btn active" id="vbtn-lists" onclick="setRemView('lists')">My Lists</div>
+        <div class="rem-view-btn" id="vbtn-high" onclick="setRemView('high')">High</div>
+        <div class="rem-view-btn" id="vbtn-medium" onclick="setRemView('medium')">Medium</div>
         <div class="rem-view-btn" id="vbtn-due" onclick="setRemView('due')">Due Now</div>
-        <div class="rem-view-btn" id="vbtn-scheduled" onclick="setRemView('scheduled')">Scheduled</div>
       </div>
     </div>
 
@@ -386,14 +387,19 @@ select { background: var(--surface2); border: 1px solid var(--border); color: va
       <div class="rem-home rem-home-grid" id="rem-grid"></div>
     </div>
 
+    <!-- High priority view -->
+    <div id="rem-high-view" style="display:none">
+      <div class="rem-scheduled" id="rem-high-content"></div>
+    </div>
+
+    <!-- Medium priority view -->
+    <div id="rem-medium-view" style="display:none">
+      <div class="rem-scheduled" id="rem-medium-content"></div>
+    </div>
+
     <!-- Due Now view (overdue + today across all lists) -->
     <div id="rem-due-view" style="display:none">
       <div class="rem-scheduled" id="rem-due-content"></div>
-    </div>
-
-    <!-- Scheduled view -->
-    <div id="rem-scheduled-view" style="display:none">
-      <div class="rem-scheduled" id="rem-scheduled-content"></div>
     </div>
   </div>
 
@@ -993,20 +999,71 @@ const PRIORITY_COLOR = { high: '#ff453a', medium: '#ff9f0a', low: '#5b9cf6', non
 
 function setRemView(v) {
   remView = v;
-  document.getElementById('vbtn-lists').classList.toggle('active', v==='lists');
-  document.getElementById('vbtn-due').classList.toggle('active', v==='due');
-  document.getElementById('vbtn-scheduled').classList.toggle('active', v==='scheduled');
-  document.getElementById('rem-lists-view').style.display     = v==='lists' ? '' : 'none';
-  document.getElementById('rem-due-view').style.display       = v==='due' ? '' : 'none';
-  document.getElementById('rem-scheduled-view').style.display = v==='scheduled' ? '' : 'none';
-  if (v==='scheduled') renderScheduled();
-  if (v==='due') renderDueNow();
+  ['lists','high','medium','due'].forEach(k => {
+    document.getElementById('vbtn-'+k)?.classList.toggle('active', v===k);
+    const el = document.getElementById('rem-'+k+'-view');
+    if (el) el.style.display = v===k ? '' : 'none';
+  });
+  if (v==='high')   renderPriority('high');
+  if (v==='medium') renderPriority('medium');
+  if (v==='due')    renderDueNow();
 }
 
 function renderRem() {
   renderGrid();
-  if (remView==='scheduled') renderScheduled();
-  if (remView==='due') renderDueNow();
+  if (remView==='high')   renderPriority('high');
+  if (remView==='medium') renderPriority('medium');
+  if (remView==='due')    renderDueNow();
+}
+
+function renderPriority(priority) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const todayStr = today.toISOString().slice(0,10);
+
+  let items = [];
+  Object.entries(state.remData).forEach(([listKey, listData]) => {
+    if (listKey === 'meds') return;
+    (listData.reminders || []).forEach(item => {
+      if (!item.done && item.priority === priority) {
+        items.push({ ...item, listKey });
+      }
+    });
+  });
+
+  // Sort: overdue first, then today, then future dated, then undated — all by date
+  items.sort((a, b) => {
+    const aHasDate = !!a.date, bHasDate = !!b.date;
+    if (aHasDate && !bHasDate) return -1;
+    if (!aHasDate && bHasDate) return 1;
+    if (aHasDate && bHasDate) return a.date.localeCompare(b.date);
+    return 0;
+  });
+
+  const elId = priority === 'high' ? 'rem-high-content' : 'rem-medium-content';
+  const el = document.getElementById(elId);
+  el.innerHTML = '';
+
+  if (!items.length) {
+    el.innerHTML = `<p style="color:var(--text-muted);padding:24px 0;text-align:center">No ${priority} priority items</p>`;
+    return;
+  }
+
+  // Group into overdue, today, upcoming, undated
+  const overdue = items.filter(i => i.date && i.date < todayStr);
+  const today2  = items.filter(i => i.date === todayStr);
+  const upcoming= items.filter(i => i.date && i.date > todayStr);
+  const undated = items.filter(i => !i.date);
+
+  function renderGroup(label, group) {
+    if (!group.length) return;
+    el.innerHTML += `<div class="rem-group-header">${label}</div>`;
+    group.forEach(item => el.innerHTML += scheduledItemHTML(item, label==='⚠ Overdue' ? 'overdue' : label==='Today' ? 'today' : 'later'));
+  }
+
+  renderGroup('⚠ Overdue', overdue);
+  renderGroup('Today', today2);
+  renderGroup('Upcoming', upcoming);
+  renderGroup('No Date', undated);
 }
 
 function renderGrid() {
@@ -1029,42 +1086,6 @@ function renderGrid() {
   });
 }
 
-function renderScheduled() {
-  const today = new Date(); today.setHours(0,0,0,0);
-  const todayStr = today.toISOString().slice(0,10);
-  const in7 = new Date(today); in7.setDate(in7.getDate()+7);
-  const in30 = new Date(today); in30.setDate(in30.getDate()+30);
-
-  // Gather all dated incomplete items
-  let all = [];
-  Object.entries(state.remData).forEach(([listKey, listData]) => {
-    if (listKey === 'meds') return;
-    (listData.reminders || []).forEach(item => {
-      if (!item.done && item.date) all.push({ ...item, listKey });
-    });
-  });
-  all.sort((a,b) => a.date.localeCompare(b.date));
-
-  const groups = { overdue:[], today:[], week:[], month:[], later:[] };
-  all.forEach(item => {
-    const d = item.date;
-    if (d < todayStr) groups.overdue.push(item);
-    else if (d === todayStr) groups.today.push(item);
-    else if (new Date(d) <= in7) groups.week.push(item);
-    else if (new Date(d) <= in30) groups.month.push(item);
-    else groups.later.push(item);
-  });
-
-  const labels = { overdue:'⚠ Overdue', today:'Today', week:'This Week', month:'This Month', later:'Later' };
-  const el = document.getElementById('rem-scheduled-content');
-  el.innerHTML = '';
-  Object.entries(groups).forEach(([g, items]) => {
-    if (!items.length) return;
-    el.innerHTML += `<div class="rem-group-header">${labels[g]}</div>`;
-    items.forEach(item => el.innerHTML += scheduledItemHTML(item, g));
-  });
-  if (!all.length) el.innerHTML = '<p style="color:var(--text-muted);padding:24px 0;text-align:center">No scheduled reminders</p>';
-}
 
 function renderDueNow() {
   const today = new Date(); today.setHours(0,0,0,0);
@@ -1225,7 +1246,7 @@ function toggleDone(listKey, id) {
   const item = state.remData[listKey].reminders.find(i=>i.id===id);
   if (item) { item.done = !item.done; saveRem(); }
   if (currentList) renderDetail();
-  else { renderGrid(); if(remView==='scheduled') renderScheduled(); }
+  else { renderGrid(); }
 }
 
 function addToCurrentList() {
@@ -1305,14 +1326,14 @@ function saveItemEdit() {
     editingItemList = newCat;
   }
   saveRem(); closeItemModal();
-  if (currentList) renderDetail(); else { renderGrid(); if(remView==='scheduled') renderScheduled(); }
+  if (currentList) renderDetail(); else { renderGrid(); }
 }
 function deleteCurrentItem() {
   if (!confirm('Delete this reminder?')) return;
   const list = state.remData[editingItemList].reminders;
   state.remData[editingItemList].reminders = list.filter(i=>i.id!==editingItemId);
   saveRem(); closeItemModal();
-  if (currentList) renderDetail(); else { renderGrid(); if(remView==='scheduled') renderScheduled(); }
+  if (currentList) renderDetail(); else { renderGrid(); }
 }
 
 function formatDate(str) {
@@ -1394,15 +1415,15 @@ function renderPack() {
       const qtyLabel = qty > 1
         ? `<span class="pack-qty">×${qty}</span>`
         : `<span class="pack-qty" style="color:transparent">×1</span>`;
-      html += `<div class="pack-item ${item.checked?'checked':''}" id="pi-${item.id}"
-        ontouchstart="packPressStart('${item.id}',event)"
-        ontouchend="packPressEnd('${item.id}',event)"
-        ontouchcancel="packPressCancel('${item.id}')"
-        onmousedown="packPressStart('${item.id}',event)"
-        onmouseup="packPressEnd('${item.id}',event)"
-        onmouseleave="packPressCancel('${item.id}')">
-        <div class="pack-check"></div>
-        <span class="pack-label">${item.label}</span>
+      html += `<div class="pack-item ${item.checked?'checked':''}" id="pi-${item.id}">
+        <div class="pack-check" onclick="togglePack('${item.id}')"></div>
+        <span class="pack-label"
+          ontouchstart="packPressStart('${item.id}',event)"
+          ontouchend="packPressEnd('${item.id}',event)"
+          ontouchcancel="packPressCancel('${item.id}')"
+          onmousedown="packPressStart('${item.id}',event)"
+          onmouseup="packPressEnd('${item.id}',event)"
+          onmouseleave="packPressCancel('${item.id}')">${item.label}</span>
         ${qtyLabel}
       </div>`;
     });
@@ -1416,28 +1437,20 @@ let packPressMoved = false;
 
 function packPressStart(id, e) {
   packPressMoved = false;
-  const el = document.getElementById('pi-'+id);
-  if (el) el.classList.add('pressing');
   packPressTimer = setTimeout(() => {
-    if (!packPressMoved) openPackItemModal(id);
-    if (el) el.classList.remove('pressing');
+    openPackItemModal(id);
     packPressTimer = null;
-  }, 500);
+  }, 600);
 }
 function packPressEnd(id, e) {
   if (packPressTimer) {
     clearTimeout(packPressTimer);
     packPressTimer = null;
-    const el = document.getElementById('pi-'+id);
-    if (el) el.classList.remove('pressing');
-    if (!packPressMoved) togglePack(id);
   }
 }
 function packPressCancel(id) {
   clearTimeout(packPressTimer);
   packPressTimer = null;
-  const el = document.getElementById('pi-'+id);
-  if (el) el.classList.remove('pressing');
 }
 
 function togglePack(id) {
