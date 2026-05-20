@@ -326,6 +326,64 @@ select { background: var(--surface2); border: 1px solid var(--border); color: va
   margin-top: 28px; font-size: 13px; color: var(--text-muted);
   display: none;
 }
+/* ══════════════════════════════════════════
+   CALENDAR
+══════════════════════════════════════════ */
+.cal-months-row {
+  display: flex; gap: 10px; padding: 16px 18px;
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.cal-months-row::-webkit-scrollbar { display: none; }
+.cal-month-block {
+  flex-shrink: 0; width: 100px; border-radius: 16px;
+  background: var(--surface); border: 2px solid var(--border);
+  padding: 14px 10px 12px; text-align: center; cursor: pointer;
+  transition: all 0.2s; position: relative;
+}
+.cal-month-block:hover { border-color: var(--accent); background: var(--surface2); }
+.cal-month-block.active { border-color: var(--accent); background: var(--accent-soft); }
+.cal-month-block.current-month { border-color: var(--purple); }
+.cal-month-block.current-month.active { border-color: var(--purple); background: rgba(191,90,242,0.1); }
+.cal-month-name { font-size: 13px; font-weight: 700; color: var(--text); letter-spacing: 0.3px; }
+.cal-month-year { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.cal-month-badge {
+  position: absolute; top: -7px; right: -7px;
+  background: var(--accent); color: #fff;
+  font-size: 11px; font-weight: 700; min-width: 20px; height: 20px;
+  border-radius: 10px; display: flex; align-items: center; justify-content: center;
+  padding: 0 5px;
+}
+.cal-month-badge.has-urgent { background: var(--red); }
+.cal-detail-panel {
+  margin: 0 18px; border-radius: 16px;
+  background: var(--surface); border: 1px solid var(--border);
+  overflow: hidden;
+}
+.cal-detail-month {
+  padding: 14px 16px 12px; border-bottom: 1px solid var(--border);
+  font-family: 'DM Serif Display', serif; font-size: 20px; color: var(--accent);
+}
+.cal-detail-items { padding: 8px 0; max-height: 55vh; overflow-y: auto; }
+.cal-day-header {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase;
+  color: var(--text-muted); padding: 12px 16px 5px;
+}
+.cal-event-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 9px 16px; border-bottom: 1px solid var(--border);
+}
+.cal-event-item:last-child { border-bottom: none; }
+.cal-event-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
+.cal-event-body { flex: 1; min-width: 0; }
+.cal-event-title { font-size: 14px; font-weight: 500; }
+.cal-event-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.cal-event-tag { font-size: 11px; padding: 1px 7px; border-radius: 8px; font-weight: 600; display: inline-block; margin-top: 3px; }
+.cal-section-label {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase;
+  color: var(--text-muted); padding: 14px 16px 6px; border-top: 1px solid var(--border);
+}
+.cal-section-label:first-child { border-top: none; }
 </style>
 </head>
 <body>
@@ -361,6 +419,7 @@ select { background: var(--surface2); border: 1px solid var(--border); color: va
   <div class="mode-tab active" onclick="switchMode('reminders')">☑ Reminders</div>
   <div class="mode-tab" onclick="switchMode('packing')">✈ Packing</div>
   <div class="mode-tab" onclick="switchMode('shopping')">🛒 Shopping</div>
+  <div class="mode-tab" onclick="switchMode('calendar')">📅 Calendar</div>
 </div>
 
 <!-- ══════════════════════════════════════════
@@ -572,6 +631,43 @@ select { background: var(--surface2); border: 1px solid var(--border); color: va
     <div class="modal-actions">
       <button class="btn" onclick="closeAddModal()">Cancel</button>
       <button class="btn primary" onclick="saveNewReminder()">Add Reminder</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     CALENDAR PANEL
+══════════════════════════════════════════ -->
+<div id="panel-calendar" class="panel">
+  <div class="sticky-header">
+    <div class="header-row">
+      <span class="panel-title">📅 Calendar</span>
+      <button class="btn" onclick="openCalSettingsModal()">⚙ Calendars</button>
+    </div>
+  </div>
+
+  <!-- Month blocks -->
+  <div class="cal-months-row" id="cal-months-row"></div>
+
+  <!-- Detail panel -->
+  <div class="cal-detail-panel" id="cal-detail-panel">
+    <div class="cal-detail-month" id="cal-detail-month"></div>
+    <div class="cal-detail-items" id="cal-detail-items">
+      <p style="color:var(--text-muted);text-align:center;padding:32px 0">Tap a month to see events</p>
+    </div>
+  </div>
+</div>
+
+<!-- Calendar Settings Modal -->
+<div class="modal-bg" id="calSettingsModal">
+  <div class="modal">
+    <div class="modal-title">Google Calendars</div>
+    <div id="calendarList" style="margin-bottom:8px">
+      <p style="color:var(--text-muted);font-size:13px">Loading calendars…</p>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeCalSettingsModal()">Cancel</button>
+      <button class="btn primary" onclick="saveCalSettings()">Save</button>
     </div>
   </div>
 </div>
@@ -811,7 +907,7 @@ const SHOP_DEFAULT = {
 // ═══════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════
-let state = { remData: {}, packData: {}, shopData: {} };
+let state = { remData: {}, packData: {}, shopData: {}, calData: {} };
 let currentMode = 'reminders';
 let remView = 'lists';
 let currentList = null;
@@ -826,7 +922,7 @@ let addFavToggle = false;
 // ═══════════════════════════════════════════════════════
 const GOOGLE_CLIENT_ID = '750839557042-fulpg7hnerivo7ahrv5mdpm4e63kpga7.apps.googleusercontent.com';
 const DRIVE_FILE_NAME  = 'family-lists-data.json';
-const SCOPES           = 'https://www.googleapis.com/auth/drive.appdata';
+const SCOPES = 'https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/calendar.readonly';
 
 let accessToken  = null;
 let driveFileId  = null;
@@ -886,6 +982,7 @@ async function loadFromDrive() {
       if (data.remData)  state.remData  = data.remData;
       if (data.packData) state.packData = data.packData;
       if (data.shopData) state.shopData = data.shopData;
+      if (data.calData)  state.calData  = data.calData;
       // migration
       if (!state.remData.family) state.remData.family = { reminders: [] };
       // migrate pack: old flat structure → new per-trip structure
@@ -927,7 +1024,7 @@ async function loadFromDrive() {
 async function saveToDrive() {
   if (!accessToken) return;
   setSyncStatus('orange', 'Saving…');
-  const body = JSON.stringify({ remData: state.remData, packData: state.packData, shopData: state.shopData });
+  const body = JSON.stringify({ remData: state.remData, packData: state.packData, shopData: state.shopData, calData: state.calData });
   try {
     if (driveFileId) {
       await fetch(`https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=media`, {
@@ -967,10 +1064,12 @@ function load() {
     const r = localStorage.getItem('fl_rem'); state.remData  = r ? JSON.parse(r) : JSON.parse(JSON.stringify(DEFAULT_DATA));
     const p = localStorage.getItem('fl_pack'); state.packData = p ? JSON.parse(p) : JSON.parse(JSON.stringify(PACK_DEFAULT));
     const s = localStorage.getItem('fl_shop'); state.shopData = s ? JSON.parse(s) : JSON.parse(JSON.stringify(SHOP_DEFAULT));
+    const c = localStorage.getItem('fl_cal');  state.calData  = c ? JSON.parse(c) : {};
   } catch(e) {
     state.remData  = JSON.parse(JSON.stringify(DEFAULT_DATA));
     state.packData = JSON.parse(JSON.stringify(PACK_DEFAULT));
     state.shopData = JSON.parse(JSON.stringify(SHOP_DEFAULT));
+    state.calData  = {};
   }
   if (!state.remData.family) state.remData.family = { reminders: [] };
 }
@@ -984,13 +1083,14 @@ function saveShop() { localStorage.setItem('fl_shop', JSON.stringify(state.shopD
 function switchMode(m) {
   currentMode = m;
   document.querySelectorAll('.mode-tab').forEach((t,i) => {
-    t.classList.toggle('active', ['reminders','packing','shopping'][i] === m);
+    t.classList.toggle('active', ['reminders','packing','shopping','calendar'][i] === m);
   });
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.getElementById('panel-'+m).classList.add('active');
   if (m==='reminders') renderRem();
   if (m==='packing')   renderPack();
   if (m==='shopping')  renderShop();
+  if (m==='calendar')  renderCalendar();
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1619,6 +1719,239 @@ function addTrip() {
   state.packData.trips.push({ name, items: makeTripItems() });
   document.getElementById('newTripName').value = '';
   savePack(); renderTripList();
+}
+
+// ═══════════════════════════════════════════════════════
+// CALENDAR
+// ═══════════════════════════════════════════════════════
+let calSelectedMonth = null; // 'YYYY-MM'
+let gcalEvents = {};         // { 'YYYY-MM': [ {title, date, time, calName, color} ] }
+let gcalColors = {};         // calendarId → color
+let enabledCalendars = null; // null = all, or Set of calendarIds
+let allGcalendars = [];      // list from API
+
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const SHORT_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+// Reminder list colours for calendar
+const LIST_CAL_COLOR = {
+  family: '#ff6b9d', annual: '#32d74b', houseToDo: '#ff9f0a',
+  houseProject: '#bf5af2', buy: '#ff375f', general: '#5ac8fa'
+};
+
+function getNext12Months() {
+  const months = [];
+  const now = new Date();
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    months.push({ year: d.getFullYear(), month: d.getMonth(), key: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}` });
+  }
+  return months;
+}
+
+function getReminderEventsForMonth(yearMonth) {
+  // yearMonth = 'YYYY-MM'
+  const events = [];
+  Object.entries(state.remData).forEach(([listKey, listData]) => {
+    if (listKey === 'meds') return;
+    (listData.reminders || []).forEach(item => {
+      if (!item.done && item.date && item.date.startsWith(yearMonth)) {
+        events.push({
+          title: item.title,
+          date: item.date,
+          calName: LIST_META[listKey]?.label || listKey,
+          color: LIST_CAL_COLOR[listKey] || '#5b9cf6',
+          source: 'reminder',
+          priority: item.priority,
+          deadline: item.deadline,
+        });
+      }
+    });
+  });
+  return events;
+}
+
+async function fetchGcalEventsForMonth(yearMonth) {
+  if (!accessToken) return [];
+  if (gcalEvents[yearMonth]) return gcalEvents[yearMonth];
+
+  const [year, month] = yearMonth.split('-').map(Number);
+  const start = new Date(year, month-1, 1).toISOString();
+  const end   = new Date(year, month, 1).toISOString();
+
+  const cals = allGcalendars.filter(c => !enabledCalendars || enabledCalendars.has(c.id));
+  const all = [];
+
+  await Promise.all(cals.map(async cal => {
+    try {
+      const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(cal.id)}/events?timeMin=${start}&timeMax=${end}&singleEvents=true&orderBy=startTime&maxResults=50`;
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+      const data = await res.json();
+      (data.items || []).forEach(ev => {
+        const dateStr = ev.start?.date || ev.start?.dateTime?.slice(0,10);
+        const timeStr = ev.start?.dateTime ? new Date(ev.start.dateTime).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}) : null;
+        all.push({
+          title: ev.summary || '(No title)',
+          date: dateStr,
+          time: timeStr,
+          calName: cal.summary,
+          color: gcalColors[cal.id] || '#5b9cf6',
+          source: 'gcal',
+        });
+      });
+    } catch(e) { /* skip failed calendar */ }
+  }));
+
+  gcalEvents[yearMonth] = all;
+  return all;
+}
+
+async function fetchAllCalendars() {
+  if (!accessToken) return;
+  try {
+    const res = await fetch('https://www.googleapis.com/calendar/v3/users/me/calendarList', {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    const data = await res.json();
+    allGcalendars = (data.items || []).filter(c => c.accessRole !== 'freeBusyReader');
+    // Build color map
+    allGcalendars.forEach(c => {
+      gcalColors[c.id] = c.backgroundColor || '#5b9cf6';
+    });
+    // Load saved enabled calendars
+    const saved = state.calData?.enabledCalendars;
+    if (saved) enabledCalendars = new Set(saved);
+    else enabledCalendars = new Set(allGcalendars.map(c => c.id)); // all by default
+  } catch(e) { console.error('Calendar fetch failed', e); }
+}
+
+async function renderCalendar() {
+  if (!allGcalendars.length) await fetchAllCalendars();
+
+  const months = getNext12Months();
+  const todayKey = new Date().toISOString().slice(0,7);
+  const row = document.getElementById('cal-months-row');
+  row.innerHTML = '';
+
+  // Render month blocks (badges filled in after gcal fetch)
+  months.forEach(m => {
+    const block = document.createElement('div');
+    block.className = 'cal-month-block' + (m.key === todayKey ? ' current-month' : '') + (m.key === calSelectedMonth ? ' active' : '');
+    block.id = 'cal-block-' + m.key;
+    block.innerHTML = `
+      <div class="cal-month-name">${SHORT_MONTHS[m.month]}</div>
+      <div class="cal-month-year">${m.year}</div>
+    `;
+    block.onclick = () => selectCalMonth(m.key, m.month, m.year);
+    row.appendChild(block);
+  });
+
+  // Select current month by default
+  if (!calSelectedMonth) {
+    const first = months[0];
+    await selectCalMonth(first.key, first.month, first.year);
+  } else {
+    await selectCalMonth(calSelectedMonth, ...calSelectedMonth.split('-').map((v,i)=>i===1?Number(v)-1:Number(v)));
+  }
+
+  // Load badges for all months in background
+  months.forEach(async m => {
+    const remCount = getReminderEventsForMonth(m.key).length;
+    const gcal = await fetchGcalEventsForMonth(m.key);
+    const total = remCount + gcal.length;
+    const block = document.getElementById('cal-block-' + m.key);
+    if (block && total > 0) {
+      const hasUrgent = getReminderEventsForMonth(m.key).some(e => e.deadline || e.priority === 'high');
+      block.innerHTML += `<div class="cal-month-badge ${hasUrgent?'has-urgent':''}">${total}</div>`;
+    }
+  });
+}
+
+async function selectCalMonth(key, month, year) {
+  calSelectedMonth = key;
+  // Update active state
+  document.querySelectorAll('.cal-month-block').forEach(b => b.classList.remove('active'));
+  const block = document.getElementById('cal-block-' + key);
+  if (block) block.classList.add('active');
+
+  const detail = document.getElementById('cal-detail-items');
+  const titleEl = document.getElementById('cal-detail-month');
+  titleEl.textContent = `${MONTH_NAMES[month]} ${year}`;
+  detail.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:24px 0;font-size:13px">Loading…</p>';
+
+  const remEvents = getReminderEventsForMonth(key);
+  const gcalEvs = await fetchGcalEventsForMonth(key);
+
+  // Merge and sort by date
+  const allEvents = [
+    ...gcalEvs.map(e => ({ ...e })),
+    ...remEvents.map(e => ({ ...e }))
+  ].sort((a,b) => (a.date||'').localeCompare(b.date||''));
+
+  if (!allEvents.length) {
+    detail.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:32px 0">Nothing scheduled this month</p>';
+    return;
+  }
+
+  // Group by date
+  const byDate = {};
+  allEvents.forEach(e => {
+    const d = e.date || 'undated';
+    if (!byDate[d]) byDate[d] = [];
+    byDate[d].push(e);
+  });
+
+  let html = '';
+  Object.keys(byDate).sort().forEach(dateKey => {
+    const events = byDate[dateKey];
+    const label = dateKey === 'undated' ? 'No date' : formatDate(dateKey);
+    html += `<div class="cal-day-header">${label}</div>`;
+    events.forEach(ev => {
+      const tag = ev.source === 'gcal'
+        ? `<span class="cal-event-tag" style="background:${ev.color}22;color:${ev.color}">${ev.calName}</span>`
+        : `<span class="cal-event-tag" style="background:${ev.color}22;color:${ev.color}">${ev.calName}</span>`;
+      const deadline = ev.deadline ? ' <span style="font-size:11px;color:var(--red)">⏰ Deadline</span>' : '';
+      const time = ev.time ? `<span style="margin-right:6px">${ev.time}</span>` : '';
+      html += `<div class="cal-event-item">
+        <div class="cal-event-dot" style="background:${ev.color}"></div>
+        <div class="cal-event-body">
+          <div class="cal-event-title">${ev.title}${deadline}</div>
+          <div class="cal-event-meta">${time}${tag}</div>
+        </div>
+      </div>`;
+    });
+  });
+  detail.innerHTML = html;
+}
+
+// ── Calendar settings ──
+function openCalSettingsModal() {
+  const el = document.getElementById('calendarList');
+  if (!allGcalendars.length) {
+    el.innerHTML = '<p style="color:var(--text-muted);font-size:13px">Sign in first to load calendars.</p>';
+  } else {
+    el.innerHTML = allGcalendars.map(c => `
+      <label style="display:flex;align-items:center;gap:10px;padding:8px 0;cursor:pointer;border-bottom:1px solid var(--border)">
+        <input type="checkbox" id="calcb-${c.id}" style="width:auto" ${!enabledCalendars || enabledCalendars.has(c.id) ? 'checked' : ''}>
+        <span style="width:12px;height:12px;border-radius:50%;background:${gcalColors[c.id]||'#5b9cf6'};flex-shrink:0;display:inline-block"></span>
+        <span style="font-size:14px">${c.summary}</span>
+      </label>
+    `).join('');
+  }
+  document.getElementById('calSettingsModal').classList.add('open');
+}
+function closeCalSettingsModal() {
+  document.getElementById('calSettingsModal').classList.remove('open');
+}
+function saveCalSettings() {
+  const ids = allGcalendars.map(c => c.id).filter(id => document.getElementById('calcb-'+id)?.checked);
+  enabledCalendars = new Set(ids);
+  if (!state.calData) state.calData = {};
+  state.calData.enabledCalendars = ids;
+  gcalEvents = {}; // clear cache so next render refetches
+  closeCalSettingsModal();
+  renderCalendar();
+  triggerSave();
 }
 
 // ═══════════════════════════════════════════════════════
