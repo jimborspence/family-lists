@@ -1837,17 +1837,23 @@ function requestCalendarAccess() {
   const client = google.accounts.oauth2.initTokenClient({
     client_id: GOOGLE_CLIENT_ID,
     scope: SCOPES,
-    prompt: 'consent',
     callback: async (resp) => {
       if (resp.error) return;
       accessToken = resp.access_token;
       gcalEvents = {};
       allGcalendars = [];
+      calSelectedMonth = null;
       const ok = await fetchAllCalendars();
-      if (ok) renderCalendar();
+      if (ok) {
+        // Clear the connect prompt and render properly
+        document.getElementById('cal-months-row').innerHTML = '';
+        document.getElementById('cal-detail-items').innerHTML = '';
+        document.getElementById('cal-detail-month').textContent = '';
+        await renderCalendar();
+      }
     }
   });
-  client.requestAccessToken();
+  client.requestAccessToken({ prompt: '' });
 }
 
 async function renderCalendar() {
